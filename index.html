@@ -1357,11 +1357,11 @@
                 <div class="target-description"></div>
             </div>-->
             
-            <!--<div class="target-option target-4" id="target-create">
+            <div class="target-option target-4" id="target-create">
                 <div class="target-icon"><i class="fas fa-cube"></i></div>
-                <div class="target-title">Studio Kreator</div>
-                <div class="target-description">Buat game dan pengalaman Anda sendiri dengan Roblox Studio</div>
-            </div>-->
+                <div class="target-title">Edit Gotaging</div>
+                <div class="target-description">Tambahkan Geotaging dari Foto mu</div>
+            </div>
             
             <!--<div class="target-option target-5" id="target-portal">
                 <div class="target-icon"><i class="fas fa-portal-enter"></i></div>
@@ -1910,8 +1910,8 @@ function showSuccessEffect(targetId) {
             
         case 'target-create':
             title = "Studio Kreator AzConnection!";
-            message = "Platform kreatif untuk membuat konten visual, desain, dan presentasi. Dengan template siap pakai dan tools AI-powered untuk hasil profesional.";
-            buttonText = "Buka Studio Kreator";
+            message = "Platform kreatif untuk membuat Geotaging pada fotomu untuk hasil profesional.";
+            buttonText = "Buka Studio Edit Geotaging";
             buttonAction = "openCreatorStudio";
             break;
             
@@ -1979,7 +1979,10 @@ function showPromoPage() {
 
 // Fungsi untuk membuka halaman Studio
 function showStudioPage() {
+     window.open('https://eanugroho-code.github.io/AzConnection-Explore/geotaging.html', '_blank');
+    
     showSuccessEffect('target-create');
+    closeSuccessEffect();
 }
 
 // Fungsi untuk membuka Portal Petualangan
