@@ -1981,7 +1981,7 @@ function showPromoPage() {
 function showStudioPage() {
      window.open('https://eanugroho-code.github.io/AzConnection-Explore/geotaging.html', '_blank');
     
-    showNotification("Membuka Tools Digital Mas Eko...");
+    showSuccessEffect('target-create');
     closeSuccessEffect();
 }
 
@@ -2018,25 +2018,25 @@ function showPromoStrategies() {
 }
 
 // Fungsi untuk membuka studio kreator
-// function openCreatorStudio() {
-//     successContent.innerHTML = `
-//         <h2 class="success-title">Studio Kreator AzConnection</h2>
-//         <div style="text-align: left; margin: 20px 0;">
-//             <h3 style="color: #ffd166; margin-bottom: 10px;">Fitur Edit Geotaging:</h3>
-//             <ul style="color: #ddd; line-height: 1.8;">
-//                 <li><strong>Design Editor</strong> - Tambah watermark pada foto</li>
-//             </ul>
-//         </div>
-//         <div style="margin-top: 25px;">
-//             <h3 style="color: #ffd166; margin-bottom: 10px;">Mulai Membuat:</h3>
-//             <button class="continue-button" onclick="window.open('https://azco.biz.id/', '_blank')">Design Editor</button>
-//             <button class="continue-button" onclick="window.open('https://azco.biz.id/studio/video', '_blank')">Video Editor</button>
-//             <button class="continue-button" onclick="window.open('https://azco.biz.id/', '_blank')">Template Gallery</button>
-//         </div>
-//         <button class="continue-button" onclick="closeSuccessEffect()" style="background-color: #ff6b6b; margin-top: 20px;">Tutup</button>
-//     `;
-//     successEffect.style.display = 'flex';
-// }
+function openCreatorStudio() {
+    successContent.innerHTML = `
+        <h2 class="success-title">Studio Kreator AzConnection</h2>
+        <div style="text-align: left; margin: 20px 0;">
+            <h3 style="color: #ffd166; margin-bottom: 10px;">Fitur Edit Geotaging:</h3>
+            <ul style="color: #ddd; line-height: 1.8;">
+                <li><strong>Design Editor</strong> - Tambah watermark pada foto</li>
+            </ul>
+        </div>
+        <div style="margin-top: 25px;">
+            <h3 style="color: #ffd166; margin-bottom: 10px;">Mulai Membuat:</h3>
+            <button class="continue-button" onclick="window.open('https://eanugroho-code.github.io/AzConnection-Explore/geotaging.html', '_blank')">Geotaging</button>
+            
+           
+        </div>
+        <button class="continue-button" onclick="closeSuccessEffect()" style="background-color: #ff6b6b; margin-top: 20px;">Tutup</button>
+    `;
+    successEffect.style.display = 'flex';
+}
 
 // Fungsi untuk menampilkan notifikasi
 function showNotification(message) {
