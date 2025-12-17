@@ -1,0 +1,2087 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earth 3D Explorer & Geotag Camera</title>
+    <!-- Leaflet CSS untuk peta -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js untuk 3D Earth -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <!-- html2canvas untuk capture screenshot -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* Intro Bumi 3D */
+        .earth-intro {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: #000;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            transition: opacity 1.5s ease, visibility 1.5s ease;
+        }
+
+        .earth-intro.fade-out {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #earthCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .intro-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.8) 70%);
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .intro-text {
+            max-width: 800px;
+            z-index: 3;
+        }
+
+        .intro-text h1 {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 0 30px rgba(0, 242, 254, 0.5);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-20px) scale(1.05); }
+        }
+
+        .intro-text p {
+            font-size: 1.5rem;
+            margin-bottom: 40px;
+            color: #ddd;
+            line-height: 1.6;
+        }
+
+        .enter-button {
+            padding: 18px 50px;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 40px rgba(0, 242, 254, 0.6);
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            z-index: 10;
+            margin: 10px;
+        }
+
+        .enter-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 60px rgba(0, 242, 254, 0.9);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .geotag-btn {
+            background: linear-gradient(45deg, #27ae60, #2ecc71) !important;
+            box-shadow: 0 0 40px rgba(46, 204, 113, 0.6) !important;
+        }
+
+        .geotag-btn:hover {
+            box-shadow: 0 0 60px rgba(46, 204, 113, 0.9) !important;
+        }
+
+        .loading-container {
+            position: absolute;
+            bottom: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            z-index: 3;
+        }
+
+        .loading-text {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #4facfe;
+            margin-bottom: 15px;
+        }
+
+        .loading-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .loading-progress {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .coordinates {
+            position: absolute;
+            bottom: 50px;
+            left: 20px;
+            color: #4facfe;
+            font-size: 1rem;
+            z-index: 3;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border-left: 3px solid #4facfe;
+        }
+
+        /* Geotag Camera Page */
+        .geotag-page {
+            display: none;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            padding: 20px;
+        }
+
+        .geotag-container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #4a69bd);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .back-button {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-5px);
+        }
+
+        .main-content {
+            display: flex;
+            min-height: 600px;
+        }
+
+        .left-panel {
+            flex: 1.2;
+            padding: 20px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+        }
+
+        .right-panel {
+            flex: 1;
+            padding: 20px;
+            background: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .camera-container {
+            position: relative;
+            background: #000;
+            height: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 2px solid #ddd;
+        }
+
+        .camera-preview {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: #000;
+        }
+
+        /* WATERMARK TEXT - Di kanan atas dengan font besar */
+        .watermark-text {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            color: white;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.9);
+            text-align: right;
+            max-width: 70%;
+        }
+
+        .watermark-text p {
+            margin: 0;
+            padding: 3px 0;
+            line-height: 1.4;
+            font-weight: 500;
+        }
+
+        .datetime {
+            font-size: 20px;
+            font-weight: bold !important;
+            margin-bottom: 8px !important;
+        }
+
+        .watermark-coordinates {
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            margin-bottom: 10px !important;
+            color: #ffcc00;
+            font-weight: 600 !important;
+        }
+
+        .street {
+            font-size: 18px;
+            margin-bottom: 6px !important;
+        }
+
+        .district {
+            font-size: 18px;
+            margin-bottom: 6px !important;
+        }
+
+        .province {
+            font-size: 18px;
+            font-weight: bold !important;
+            margin-bottom: 6px !important;
+        }
+
+        /* PETA WATERMARK - Di kiri bawah */
+        .watermark-map {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 250px;
+            height: 180px;
+            z-index: 100;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+            background: #f8f8f8;
+        }
+
+        #watermarkMap {
+            width: 100%;
+            height: 100%;
+        }
+
+        .camera-placeholder {
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .camera-icon {
+            font-size: 60px;
+            margin-bottom: 15px;
+            opacity: 0.7;
+        }
+
+        .placeholder-text {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        /* Peta pencarian lokasi */
+        .map-container {
+            height: 300px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 15px;
+            border: 2px solid #ddd;
+        }
+
+        #locationMap {
+            width: 100%;
+            height: 100%;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+        }
+
+        .control-group h3 {
+            color: #2c3e50;
+            margin-bottom: 12px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .search-box button {
+            padding: 10px 15px;
+            background: #4a69bd;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .search-box button:hover {
+            background: #3c5aa3;
+        }
+
+        .time-control {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .time-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .time-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .time-btn {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .time-btn:hover {
+            background: #e0e0e0;
+        }
+
+        .time-btn.active {
+            background: #4a69bd;
+            color: white;
+            border-color: #4a69bd;
+        }
+
+        .coord-display {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .coord-display h4 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .coord-values {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .coord-item {
+            flex: 1;
+        }
+
+        .coord-item label {
+            font-size: 12px;
+            color: #666;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .coord-item .value {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .address-fields {
+            margin-top: 15px;
+        }
+
+        .address-input {
+            margin-bottom: 10px;
+        }
+
+        .address-input label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 13px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .address-input input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+
+        .button-group-camera {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .camera-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .btn-capture {
+            background: linear-gradient(135deg, #4a69bd, #2c3e50);
+            color: white;
+        }
+
+        .btn-capture:hover {
+            background: linear-gradient(135deg, #3c5aa3, #243342);
+        }
+
+        .btn-upload {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-upload:hover {
+            background: #2980b9;
+        }
+
+        .btn-download {
+            background: #27ae60;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-download:hover {
+            background: #219a52;
+        }
+
+        .btn-reset {
+            background: #7f8c8d;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn-reset:hover {
+            background: #616a6b;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status-message {
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .leaflet-control-attribution {
+            font-size: 10px !important;
+        }
+
+        .leaflet-container {
+            background: #f8f8f8 !important;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .action-buttons button {
+            flex: 1;
+            padding: 8px;
+            font-size: 13px;
+        }
+
+        /* Konten Utama Earth Explorer (hidden) */
+        .earth-content {
+            display: none;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .left-panel, .right-panel {
+                width: 100%;
+            }
+            
+            .watermark-text {
+                top: 10px;
+                right: 10px;
+                max-width: 65%;
+            }
+            
+            .watermark-text p {
+                font-size: 14px !important;
+            }
+            
+            .datetime {
+                font-size: 16px !important;
+            }
+            
+            .watermark-coordinates {
+                font-size: 14px !important;
+            }
+            
+            .watermark-map {
+                width: 180px;
+                height: 140px;
+            }
+            
+            .camera-container {
+                height: 350px;
+            }
+            
+            .map-container {
+                height: 250px;
+            }
+            
+            .time-inputs {
+                grid-template-columns: 1fr;
+            }
+            
+            .intro-text h1 {
+                font-size: 2.5rem;
+            }
+            
+            .intro-text p {
+                font-size: 1.2rem;
+            }
+            
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .enter-button {
+                padding: 15px 30px;
+                font-size: 1rem;
+                width: 80%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Intro Bumi 3D -->
+    <div class="earth-intro" id="earthIntro">
+        <canvas id="earthCanvas"></canvas>
+        
+        <div class="intro-overlay">
+            <div class="intro-text zoom-in">
+                <h1>EARTH 3D EXPLORER & GEOTAG CAMERA</h1>
+                <p>Jelajahi bumi dalam 3D dan buat foto dengan watermark geotag yang menarik.</p>
+                <div class="button-group">
+                    <button class="enter-button pulse" id="exploreButton">
+                        <i class="fas fa-globe-americas"></i> Jelajahi Bumi 3D
+                    </button>
+                    <button class="enter-button geotag-btn pulse" id="geotagButton">
+                        <i class="fas fa-camera"></i> Buka Geotag Camera
+                    </button>
+                </div>
+            </div>
+            
+            <div class="loading-container">
+                <div class="loading-text" id="loadingText">Memuat aplikasi...</div>
+                <div class="loading-bar">
+                    <div class="loading-progress" id="loadingProgress"></div>
+                </div>
+            </div>
+            
+            <div class="coordinates" id="coordinates">
+                Lat: 0° | Long: 0° | Zoom: 1.0x
+            </div>
+        </div>
+    </div>
+
+    <!-- Geotag Camera Page -->
+    <div class="geotag-page" id="geotagPage">
+        <div class="geotag-container">
+            <div class="header">
+                <button class="back-button" onclick="goBackToHome()">
+                    <i class="fas fa-arrow-left"></i> Kembali
+                </button>
+                <h1>📷 Geotag Camera - Watermark dengan Peta</h1>
+                <p>Ambil foto dengan watermark lokasi dan peta Leaflet</p>
+            </div>
+            
+            <div class="main-content">
+                <!-- Panel Kiri: Kontrol dan Peta -->
+                <div class="left-panel">
+                    <div class="control-group">
+                        <h3>📍 Pencarian Lokasi</h3>
+                        <div class="search-box">
+                            <input type="text" id="locationSearch" placeholder="Cari lokasi (contoh: Jakarta, Monas)">
+                            <button onclick="searchLocation()">Cari</button>
+                        </div>
+                        
+                        <div class="map-container">
+                            <div id="locationMap"></div>
+                        </div>
+                        
+                        <div class="coord-display">
+                            <h4>📍 Koordinat Terpilih</h4>
+                            <div class="coord-values">
+                                <div class="coord-item">
+                                    <label>Latitude</label>
+                                    <div class="value" id="selectedLat">-6.2088</div>
+                                </div>
+                                <div class="coord-item">
+                                    <label>Longitude</label>
+                                    <div class="value" id="selectedLng">106.8456</div>
+                                </div>
+                            </div>
+                            <div class="action-buttons">
+                                <button onclick="useSelectedLocation()" style="background: #27ae60;">
+                                    📍 Gunakan Koordinat
+                                </button>
+                                <button onclick="getAddressFromCoordinates()" style="background: #3498db;">
+                                    🏠 Ambil Alamat Otomatis
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <h3>🕐 Waktu dan Tanggal</h3>
+                        <div class="time-control">
+                            <div class="time-inputs">
+                                <div class="address-input">
+                                    <label for="dateInput">Tanggal</label>
+                                    <input type="date" id="dateInput">
+                                </div>
+                                <div class="address-input">
+                                    <label for="timeInput">Waktu (Jam:Menit)</label>
+                                    <input type="time" id="timeInput">
+                                </div>
+                            </div>
+                            <div class="time-buttons">
+                                <button class="time-btn active" onclick="setCurrentTime()">Waktu Sekarang</button>
+                                <button class="time-btn" onclick="setCustomTime()">Waktu Custom</button>
+                            </div>
+                            <div style="margin-top: 10px; display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="autoUpdateTime" checked>
+                                <label for="autoUpdateTime" style="font-size: 12px;">Update waktu otomatis</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="control-group">
+                        <h3>📝 Detail Alamat</h3>
+                        <div class="address-fields">
+                            <div class="address-input">
+                                <label for="street">Nama Jalan</label>
+                                <input type="text" id="street" placeholder="Jl. Merdeka No. 123">
+                            </div>
+                            <div class="address-input">
+                                <label for="district">Kecamatan</label>
+                                <input type="text" id="district" placeholder="Gambir">
+                            </div>
+                            <div class="address-input">
+                                <label for="city">Kabupaten/Kota</label>
+                                <input type="text" id="city" placeholder="Jakarta Pusat">
+                            </div>
+                            <div class="address-input">
+                                <label for="province">Provinsi</label>
+                                <input type="text" id="province" placeholder="DKI Jakarta">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Panel Kanan: Preview dan Download -->
+                <div class="right-panel">
+                    <div class="camera-container">
+                        <div id="cameraPlaceholder" class="camera-placeholder">
+                            <div class="camera-icon">📷</div>
+                            <div class="placeholder-text">Upload atau ambil foto untuk memulai</div>
+                        </div>
+                        <img id="previewImage" class="camera-preview hidden">
+                        
+                        <!-- WATERMARK TEXT - Di kanan atas dengan font besar -->
+                        <div id="watermarkText" class="watermark-text hidden">
+                            <p class="datetime" id="datetimeDisplay">1 Januari 2024 12:00:00</p>
+                            <p class="watermark-coordinates" id="coordinateDisplay">-6.2088, 106.8456</p>
+                            <p class="street" id="streetDisplay">Jl. Merdeka No. 123</p>
+                            <p class="district" id="districtDisplay">Kec. Gambir, Jakarta Pusat</p>
+                            <p class="province" id="provinceDisplay">DKI Jakarta</p>
+                        </div>
+                        
+                        <!-- PETA WATERMARK - Di kiri bawah -->
+                        <div id="watermarkMapContainer" class="watermark-map hidden">
+                            <div id="watermarkMap"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="button-group-camera">
+                        <button class="camera-btn btn-capture" onclick="capturePhoto()">
+                            📸 Ambil Foto
+                        </button>
+                        <button class="camera-btn btn-upload" onclick="uploadPhoto()">
+                            ⬆️ Upload Foto
+                        </button>
+                    </div>
+                    
+                    <button class="camera-btn btn-download" onclick="downloadPhoto()" id="downloadBtn" disabled>
+                        ⬇️ Download Foto
+                    </button>
+                    
+                    <button class="camera-btn btn-reset" onclick="resetAll()">
+                        🔄 Reset
+                    </button>
+                    
+                    <div id="statusMessage" class="status-message hidden"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Konten Utama Earth Explorer -->
+    <div class="earth-content" id="earthContent">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-bg"></div>
+            <div class="container">
+                <div class="hero-content">
+                    <button class="back-button" onclick="goBackToHome()">
+                        <i class="fas fa-arrow-left"></i> Kembali
+                    </button>
+                    <h1>EXPLORE OUR PLANET IN 3D</h1>
+                    <p>Dengan teknologi Three.js dan WebGL, kami menghadirkan pengalaman menjelajahi bumi yang belum pernah Anda rasakan sebelumnya. Dari orbit hingga permukaan tanah, semuanya dalam resolusi tinggi.</p>
+                    <button class="enter-button" onclick="openGeotagCamera()">
+                        <i class="fas fa-camera"></i> Buka Geotag Camera
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Earth Explorer Section -->
+        <section class="earth-explorer">
+            <canvas id="explorerCanvas"></canvas>
+            <div class="explorer-controls">
+                <button class="control-btn" onclick="flyToLocation('amerika')">Amerika</button>
+                <button class="control-btn" onclick="flyToLocation('eropa')">Eropa</button>
+                <button class="control-btn" onclick="flyToLocation('asia')">Asia</button>
+                <button class="control-btn" onclick="flyToLocation('afrika')">Afrika</button>
+                <button class="control-btn" onclick="flyToLocation('australia')">Australia</button>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features container">
+            <h2 class="section-title">Fitur Utama</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-globe-americas"></i></div>
+                    <h3>Bola Dunia 3D Interaktif</h3>
+                    <p>Putar dan zoom bola dunia dengan kontrol penuh. Lihat setiap benua, negara, dan kota dari berbagai sudut.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-camera"></i></div>
+                    <h3>Geotag Camera</h3>
+                    <p>Ambil foto dengan watermark lokasi dan peta. Sempurna untuk dokumentasi perjalanan dengan informasi geografis.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-plane"></i></div>
+                    <h3>Penerbangan Virtual</h3>
+                    <p>Terbang dari satu lokasi ke lokasi lain dengan animasi mulus seperti Google Earth.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="container">
+                <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Siap Menjelajah?</h2>
+                <p style="font-size: 1.2rem; max-width: 600px; margin: 0 auto 30px;">Bergabunglah dengan komunitas penjelajah bumi dan temukan keindahan planet kita.</p>
+                <button class="enter-button" onclick="goBackToHome()">Kembali ke Menu Utama</button>
+                
+                <div class="social-links">
+                    <a href="#"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#"><i class="fab fa-twitter"></i></a>
+                    <a href="#"><i class="fab fa-instagram"></i></a>
+                    <a href="#"><i class="fab fa-youtube"></i></a>
+                    <a href="#"><i class="fab fa-github"></i></a>
+                </div>
+                
+                <div class="copyright">
+                    &copy; 2023 Earth 3D Explorer. All rights reserved. | Dibuat dengan Three.js & Leaflet
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <input type="file" id="photoInput" class="hidden" accept="image/*" capture="environment">
+    
+    <script>
+        // =============================
+        // 3D EARTH EXPLORER FUNCTIONS
+        // =============================
+        
+        // Variabel global untuk 3D Earth
+        let scene, camera, renderer, controls, earthMesh, explorerScene, explorerCamera, explorerRenderer, explorerControls;
+        let introProgress = 0;
+        let loadingInterval;
+        
+        // Inisialisasi Three.js untuk intro bumi
+        function initIntroEarth() {
+            // Scene
+            scene = new THREE.Scene();
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 5;
+            
+            // Renderer
+            const canvas = document.getElementById('earthCanvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Kontrol orbit
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.5;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
+            
+            // Tambahkan cahaya
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(5, 3, 5);
+            scene.add(directionalLight);
+            
+            // Buat bumi (sphere)
+            const geometry = new THREE.SphereGeometry(2, 64, 64);
+            
+            // Load tekstur bumi
+            const textureLoader = new THREE.TextureLoader();
+            
+            // Gunakan URL yang lebih reliable untuk tekstur
+            const earthTexture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+            
+            const material = new THREE.MeshPhongMaterial({
+                map: earthTexture,
+                specular: new THREE.Color(0x333333),
+                shininess: 5
+            });
+            
+            earthMesh = new THREE.Mesh(geometry, material);
+            scene.add(earthMesh);
+            
+            // Bintang di latar belakang
+            const starGeometry = new THREE.SphereGeometry(80, 64, 64);
+            const starMaterial = new THREE.MeshBasicMaterial({
+                color: 0x000022,
+                side: THREE.BackSide
+            });
+            
+            const starMesh = new THREE.Mesh(starGeometry, starMaterial);
+            scene.add(starMesh);
+            
+            // Animasi
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // Rotasi bumi
+                earthMesh.rotation.y += 0.001;
+                
+                controls.update();
+                renderer.render(scene, camera);
+            }
+            
+            animate();
+            
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        // Inisialisasi Three.js untuk explorer
+        function initExplorerEarth() {
+            const canvas = document.getElementById('explorerCanvas');
+            if (!canvas) return;
+            
+            // Scene
+            explorerScene = new THREE.Scene();
+            
+            // Camera
+            explorerCamera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            explorerCamera.position.z = 5;
+            
+            // Renderer
+            explorerRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            explorerRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            explorerRenderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Kontrol orbit
+            explorerControls = new THREE.OrbitControls(explorerCamera, explorerRenderer.domElement);
+            explorerControls.enableDamping = true;
+            explorerControls.dampingFactor = 0.05;
+            explorerControls.minDistance = 2;
+            explorerControls.maxDistance = 10;
+            
+            // Tambahkan cahaya
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            explorerScene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(5, 3, 5);
+            explorerScene.add(directionalLight);
+            
+            // Buat bumi
+            const geometry = new THREE.SphereGeometry(2, 128, 128);
+            const textureLoader = new THREE.TextureLoader();
+            
+            const earthTexture = textureLoader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg',
+                () => {
+                    console.log("Textur bumi berhasil dimuat");
+                },
+                undefined,
+                (err) => {
+                    console.error("Gagal memuat tekstur bumi:", err);
+                }
+            );
+            
+            const material = new THREE.MeshPhongMaterial({
+                map: earthTexture,
+                specular: new THREE.Color(0x333333),
+                shininess: 5
+            });
+            
+            const earthExplorerMesh = new THREE.Mesh(geometry, material);
+            explorerScene.add(earthExplorerMesh);
+            
+            // Animasi
+            function animateExplorer() {
+                requestAnimationFrame(animateExplorer);
+                explorerControls.update();
+                explorerRenderer.render(explorerScene, explorerCamera);
+            }
+            
+            animateExplorer();
+            
+            // Handle resize untuk explorer
+            window.addEventListener('resize', () => {
+                if (explorerCamera && explorerRenderer) {
+                    const canvas = document.getElementById('explorerCanvas');
+                    explorerCamera.aspect = canvas.clientWidth / canvas.clientHeight;
+                    explorerCamera.updateProjectionMatrix();
+                    explorerRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+                }
+            });
+        }
+        
+        // Fungsi resize window
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // Simulasi loading
+        function startLoading() {
+            loadingInterval = setInterval(() => {
+                introProgress += Math.random() * 15;
+                if (introProgress > 100) introProgress = 100;
+                document.getElementById('loadingProgress').style.width = introProgress + '%';
+                
+                // Update teks loading
+                if (introProgress < 30) {
+                    document.getElementById('loadingText').textContent = "Memuat aplikasi...";
+                } else if (introProgress < 60) {
+                    document.getElementById('loadingText').textContent = "Menyiapkan modul 3D...";
+                } else if (introProgress < 90) {
+                    document.getElementById('loadingText').textContent = "Menginisialisasi sistem...";
+                } else {
+                    document.getElementById('loadingText').textContent = "Siap untuk digunakan!";
+                }
+                
+                // Update koordinat
+                const lat = (Math.random() * 180 - 90).toFixed(2);
+                const long = (Math.random() * 360 - 180).toFixed(2);
+                const zoom = (1 + Math.random() * 2).toFixed(1);
+                document.getElementById('coordinates').textContent = `Lat: ${lat}° | Long: ${long}° | Zoom: ${zoom}x`;
+                
+                // Aktifkan tombol ketika loading selesai
+                if (introProgress >= 100) {
+                    clearInterval(loadingInterval);
+                    document.getElementById('exploreButton').style.opacity = "1";
+                    document.getElementById('exploreButton').style.transform = "scale(1)";
+                    document.getElementById('exploreButton').disabled = false;
+                    document.getElementById('geotagButton').style.opacity = "1";
+                    document.getElementById('geotagButton').style.transform = "scale(1)";
+                    document.getElementById('geotagButton').disabled = false;
+                }
+            }, 300);
+        }
+        
+        // Fungsi untuk masuk ke Earth Explorer
+        function enterEarthExplorer() {
+            // Hentikan loading
+            clearInterval(loadingInterval);
+            
+            // Animasi zoom out bumi
+            const earthIntro = document.getElementById('earthIntro');
+            earthIntro.style.transition = 'transform 2s ease, opacity 2s ease';
+            earthIntro.style.transform = 'scale(1.5)';
+            earthIntro.style.opacity = '0';
+            
+            // Setelah animasi, sembunyikan intro dan tampilkan earth content
+            setTimeout(() => {
+                earthIntro.classList.add('fade-out');
+                
+                // Tampilkan earth content
+                setTimeout(() => {
+                    document.getElementById('earthContent').style.display = 'block';
+                    earthIntro.style.display = 'none';
+                    
+                    // Inisialisasi explorer bumi
+                    initExplorerEarth();
+                }, 500);
+            }, 2000);
+        }
+        
+        // Fungsi untuk masuk ke Geotag Camera
+        function openGeotagCamera() {
+            // Hentikan loading
+            clearInterval(loadingInterval);
+            
+            // Animasi zoom out bumi
+            const earthIntro = document.getElementById('earthIntro');
+            earthIntro.style.transition = 'transform 2s ease, opacity 2s ease';
+            earthIntro.style.transform = 'scale(1.5)';
+            earthIntro.style.opacity = '0';
+            
+            // Setelah animasi, sembunyikan intro dan tampilkan geotag camera
+            setTimeout(() => {
+                earthIntro.classList.add('fade-out');
+                
+                // Tampilkan geotag camera
+                setTimeout(() => {
+                    document.getElementById('geotagPage').style.display = 'block';
+                    earthIntro.style.display = 'none';
+                    
+                    // Inisialisasi geotag camera
+                    initGeotagCamera();
+                }, 500);
+            }, 2000);
+        }
+        
+        // Fungsi untuk terbang ke lokasi tertentu
+        function flyToLocation(continent) {
+            const locations = {
+                'amerika': { lat: 40, long: -100, zoom: 2 },
+                'eropa': { lat: 50, long: 10, zoom: 3 },
+                'asia': { lat: 30, long: 100, zoom: 3 },
+                'afrika': { lat: 0, long: 20, zoom: 3 },
+                'australia': { lat: -25, long: 135, zoom: 3 }
+            };
+            
+            const loc = locations[continent];
+            if (loc) {
+                alert(`Terbang ke ${continent.toUpperCase()}...`);
+            }
+        }
+        
+        // Fungsi untuk kembali ke home
+        function goBackToHome() {
+            // Sembunyikan semua konten
+            document.getElementById('earthContent').style.display = 'none';
+            document.getElementById('geotagPage').style.display = 'none';
+            
+            // Tampilkan kembali intro bumi
+            const earthIntro = document.getElementById('earthIntro');
+            earthIntro.style.display = 'flex';
+            earthIntro.classList.remove('fade-out');
+            earthIntro.style.opacity = '1';
+            earthIntro.style.transform = 'scale(1)';
+            
+            // Reset loading
+            introProgress = 0;
+            document.getElementById('loadingProgress').style.width = '0%';
+            document.getElementById('loadingText').textContent = "Memuat aplikasi...";
+            document.getElementById('exploreButton').style.opacity = "1";
+            document.getElementById('exploreButton').style.transform = "scale(1)";
+            document.getElementById('exploreButton').disabled = false;
+            document.getElementById('geotagButton').style.opacity = "1";
+            document.getElementById('geotagButton').style.transform = "scale(1)";
+            document.getElementById('geotagButton').disabled = false;
+        }
+        
+        // =============================
+        // GEOTAG CAMERA FUNCTIONS
+        // =============================
+        
+        // Variabel global untuk Geotag Camera
+        let locationMap = null;
+        let watermarkMap = null;
+        let selectedMarker = null;
+        let timeUpdateInterval = null;
+        
+        // Data koordinat
+        let currentCoords = {
+            lat: -6.2088,
+            lng: 106.8456
+        };
+        
+        // Data untuk foto
+        let mediaData = {
+            originalDataUrl: '',
+            type: 'photo'
+        };
+        
+        // Format tanggal Indonesia dengan waktu
+        function formatIndonesianDateTime(date) {
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            const day = date.getDate();
+            const month = months[date.getMonth()];
+            const year = date.getFullYear();
+            
+            const hours = date.getHours().toString().padStart(2, '0');
+            const minutes = date.getMinutes().toString().padStart(2, '0');
+            const seconds = date.getSeconds().toString().padStart(2, '0');
+            
+            return `${day} ${month} ${year} ${hours}:${minutes}:${seconds}`;
+        }
+        
+        // Format tanggal untuk input date
+        function formatDateForInput(date) {
+            return date.toISOString().split('T')[0];
+        }
+        
+        // Format waktu untuk input time
+        function formatTimeForInput(date) {
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+        
+        // Set waktu ke sekarang
+        function setCurrentTime() {
+            const now = new Date();
+            document.getElementById('dateInput').value = formatDateForInput(now);
+            document.getElementById('timeInput').value = formatTimeForInput(now);
+            updateTimeButtons('now');
+            updateWatermarkDisplay();
+        }
+        
+        // Set waktu custom
+        function setCustomTime() {
+            const dateInput = document.getElementById('dateInput').value;
+            const timeInput = document.getElementById('timeInput').value;
+            
+            if (!dateInput || !timeInput) {
+                setCurrentTime();
+                return;
+            }
+            
+            updateTimeButtons('custom');
+            updateWatermarkDisplay();
+        }
+        
+        // Update tombol waktu aktif
+        function updateTimeButtons(activeBtn) {
+            const buttons = document.querySelectorAll('.time-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            if (activeBtn === 'now') {
+                document.querySelector('.time-btn:nth-child(1)').classList.add('active');
+            } else {
+                document.querySelector('.time-btn:nth-child(2)').classList.add('active');
+            }
+        }
+        
+        // Dapatkan tanggal dan waktu yang dipilih
+        function getSelectedDateTime() {
+            const dateInput = document.getElementById('dateInput').value;
+            const timeInput = document.getElementById('timeInput').value;
+            
+            if (dateInput && timeInput) {
+                return new Date(`${dateInput}T${timeInput}`);
+            } else if (dateInput) {
+                return new Date(`${dateInput}T12:00`);
+            } else {
+                return new Date();
+            }
+        }
+        
+        // Inisialisasi peta pencarian lokasi
+        function initLocationMap() {
+            locationMap = L.map('locationMap').setView([-6.2088, 106.8456], 13);
+            
+            // Tambahkan tile layer OpenStreetMap (peta terang)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(locationMap);
+            
+            // Tambahkan marker awal
+            selectedMarker = L.marker([-6.2088, 106.8456]).addTo(locationMap)
+                .bindPopup('Lokasi terpilih<br>Klik peta untuk mengubah')
+                .openPopup();
+                
+            // Event klik peta untuk memilih lokasi
+            locationMap.on('click', function(e) {
+                updateSelectedLocation(e.latlng.lat, e.latlng.lng);
+                // Otomatis ambil alamat dari koordinat
+                setTimeout(() => {
+                    getAddressFromCoordinates();
+                }, 500);
+            });
+            
+            // Event untuk mengambil lokasi saat ini
+            document.getElementById('locationSearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchLocation();
+                }
+            });
+        }
+        
+        // Inisialisasi peta untuk watermark
+        function initWatermarkMap() {
+            // Hapus peta lama jika ada
+            if (watermarkMap) {
+                watermarkMap.remove();
+            }
+            
+            // Tunggu sedikit untuk memastikan kontainer sudah terlihat
+            setTimeout(() => {
+                watermarkMap = L.map('watermarkMap', {
+                    zoomControl: false,
+                    dragging: false,
+                    touchZoom: false,
+                    scrollWheelZoom: false,
+                    doubleClickZoom: false,
+                    boxZoom: false,
+                    keyboard: false,
+                    attributionControl: false
+                }).setView([currentCoords.lat, currentCoords.lng], 15);
+                
+                // Tambahkan tile layer (peta terang)
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18
+                }).addTo(watermarkMap);
+                
+                // Tambahkan marker dengan ikon merah
+                const redIcon = L.icon({
+                    iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+                            <circle cx="16" cy="16" r="12" fill="#e74c3c" stroke="#c0392b" stroke-width="2"/>
+                            <circle cx="16" cy="16" r="6" fill="#ffffff"/>
+                        </svg>
+                    `),
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 28],
+                    popupAnchor: [0, -28]
+                });
+                
+                L.marker([currentCoords.lat, currentCoords.lng], {icon: redIcon})
+                    .addTo(watermarkMap)
+                    .bindPopup('Lokasi foto');
+                
+                // Pastikan peta di-render dengan benar
+                setTimeout(() => {
+                    if (watermarkMap) {
+                        watermarkMap.invalidateSize();
+                    }
+                }, 100);
+            }, 300);
+        }
+        
+        // Update lokasi terpilih di peta pencarian
+        function updateSelectedLocation(lat, lng) {
+            currentCoords.lat = lat;
+            currentCoords.lng = lng;
+            
+            // Update marker
+            if (selectedMarker) {
+                selectedMarker.setLatLng([lat, lng]);
+            } else {
+                selectedMarker = L.marker([lat, lng]).addTo(locationMap);
+            }
+            
+            // Update tampilan koordinat
+            document.getElementById('selectedLat').textContent = lat.toFixed(6);
+            document.getElementById('selectedLng').textContent = lng.toFixed(6);
+            
+            // Update watermark display
+            updateWatermarkDisplay();
+            
+            // Update peta watermark jika sudah ada
+            if (watermarkMap) {
+                watermarkMap.setView([lat, lng], 15);
+            }
+        }
+        
+        // Gunakan lokasi terpilih
+        function useSelectedLocation() {
+            updateWatermarkDisplay();
+            showStatus('📍 Koordinat berhasil diterapkan', 'success');
+        }
+        
+        // Ambil alamat dari koordinat (reverse geocoding)
+        async function getAddressFromCoordinates() {
+            showStatus('🔍 Mengambil alamat dari koordinat...', 'info');
+            
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.lat}&lon=${currentCoords.lng}&zoom=18&addressdetails=1`;
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data && data.address) {
+                    const addr = data.address;
+                    
+                    // Isi field alamat secara otomatis
+                    document.getElementById('street').value = addr.road || addr.pedestrian || addr.footway || '';
+                    document.getElementById('district').value = addr.suburb || addr.neighbourhood || '';
+                    document.getElementById('city').value = addr.city || addr.town || addr.village || addr.county || '';
+                    document.getElementById('province').value = addr.state || '';
+                    
+                    showStatus('✅ Alamat berhasil diambil dari koordinat', 'success');
+                    updateWatermarkDisplay();
+                } else {
+                    showStatus('⚠️ Alamat tidak ditemukan untuk koordinat ini', 'info');
+                }
+            } catch (error) {
+                console.error('Error reverse geocoding:', error);
+                showStatus('❌ Gagal mengambil alamat', 'error');
+            }
+        }
+        
+        // Update peta watermark
+        function updateWatermarkMap(lat, lng) {
+            if (!watermarkMap) {
+                initWatermarkMap();
+            } else {
+                watermarkMap.setView([lat, lng], 15);
+            }
+            
+            // Force map update
+            setTimeout(() => {
+                if (watermarkMap) {
+                    watermarkMap.invalidateSize();
+                }
+            }, 100);
+        }
+        
+        // Update tampilan watermark
+        function updateWatermarkDisplay() {
+            // Update tanggal dan waktu
+            const selectedDateTime = getSelectedDateTime();
+            document.getElementById('datetimeDisplay').textContent = formatIndonesianDateTime(selectedDateTime);
+            
+            // Update koordinat
+            document.getElementById('coordinateDisplay').textContent = 
+                `${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)}`;
+            
+            // Update alamat
+            const street = document.getElementById('street').value.trim();
+            const district = document.getElementById('district').value.trim();
+            const city = document.getElementById('city').value.trim();
+            const province = document.getElementById('province').value.trim();
+            
+            if (street) {
+                document.getElementById('streetDisplay').textContent = street;
+            } else {
+                document.getElementById('streetDisplay').textContent = 'Jl. Tidak Diketahui';
+            }
+            
+            if (district && city) {
+                document.getElementById('districtDisplay').textContent = `Kec. ${district}, ${city}`;
+            } else if (district) {
+                document.getElementById('districtDisplay').textContent = `Kec. ${district}`;
+            } else if (city) {
+                document.getElementById('districtDisplay').textContent = city;
+            } else {
+                document.getElementById('districtDisplay').textContent = 'Lokasi tidak diketahui';
+            }
+            
+            if (province) {
+                document.getElementById('provinceDisplay').textContent = province;
+            } else {
+                document.getElementById('provinceDisplay').textContent = 'Provinsi tidak diketahui';
+            }
+            
+            // Update peta jika watermark map sudah ada
+            if (watermarkMap && mediaData.originalDataUrl) {
+                updateWatermarkMap(currentCoords.lat, currentCoords.lng);
+            }
+        }
+        
+        // Cari lokasi berdasarkan teks
+        function searchLocation() {
+            const query = document.getElementById('locationSearch').value.trim();
+            if (!query) {
+                showStatus('⚠️ Masukkan kata kunci pencarian', 'error');
+                return;
+            }
+            
+            showStatus('🔍 Mencari lokasi...', 'info');
+            
+            // Gunakan Nominatim API untuk geocoding
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=id`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        const result = data[0];
+                        const lat = parseFloat(result.lat);
+                        const lng = parseFloat(result.lon);
+                        
+                        updateSelectedLocation(lat, lng);
+                        
+                        // Coba ambil alamat otomatis
+                        setTimeout(() => {
+                            getAddressFromCoordinates();
+                        }, 500);
+                        
+                        showStatus('✅ Lokasi ditemukan', 'success');
+                    } else {
+                        showStatus('❌ Lokasi tidak ditemukan', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching location:', error);
+                    showStatus('❌ Gagal mencari lokasi', 'error');
+                });
+        }
+        
+        // Mulai update waktu otomatis
+        function startAutoTimeUpdate() {
+            if (timeUpdateInterval) {
+                clearInterval(timeUpdateInterval);
+            }
+            
+            const autoUpdate = document.getElementById('autoUpdateTime').checked;
+            if (autoUpdate) {
+                timeUpdateInterval = setInterval(() => {
+                    if (document.querySelector('.time-btn.active').textContent === 'Waktu Sekarang') {
+                        setCurrentTime();
+                    }
+                }, 1000);
+            }
+        }
+        
+        // Ambil foto dari kamera
+        function capturePhoto() {
+            document.getElementById('photoInput').click();
+        }
+        
+        // Upload foto
+        function uploadPhoto() {
+            document.getElementById('photoInput').click();
+        }
+        
+        // Proses foto yang diambil/diupload
+        function processPhoto(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            if (file.size > 10 * 1024 * 1024) {
+                showStatus('❌ Ukuran file terlalu besar! Maksimal 10MB.', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                // Tampilkan preview
+                const preview = document.getElementById('previewImage');
+                preview.src = e.target.result;
+                preview.classList.remove('hidden');
+                
+                // Sembunyikan placeholder
+                document.getElementById('cameraPlaceholder').classList.add('hidden');
+                
+                // Simpan foto original
+                mediaData.originalDataUrl = e.target.result;
+                
+                // Tampilkan watermark text
+                document.getElementById('watermarkText').classList.remove('hidden');
+                document.getElementById('watermarkMapContainer').classList.remove('hidden');
+                
+                // Inisialisasi peta watermark
+                initWatermarkMap();
+                
+                // Aktifkan tombol download
+                document.getElementById('downloadBtn').disabled = false;
+                
+                // Update watermark display
+                updateWatermarkDisplay();
+                
+                showStatus('✅ Foto berhasil diupload', 'success');
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        // Download foto dengan watermark
+        async function downloadPhoto() {
+            if (!mediaData.originalDataUrl) {
+                showStatus('❌ Tidak ada foto untuk didownload!', 'error');
+                return;
+            }
+
+            showStatus('⏳ Sedang memproses foto...', 'info');
+            
+            // Tunggu sejenak agar peta Leaflet benar-benar ter-render
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // Ambil screenshot peta jika watermarkMapContainer terlihat
+            let mapImageData = null;
+            const watermarkMapContainer = document.getElementById('watermarkMapContainer');
+            
+            if (watermarkMapContainer && !watermarkMapContainer.classList.contains('hidden')) {
+                try {
+                    mapImageData = await captureMapScreenshot();
+                } catch (error) {
+                    console.error('Error capturing map:', error);
+                    // Fallback ke peta sederhana
+                    mapImageData = null;
+                }
+            }
+            
+            const img = new Image();
+            
+            img.onload = async function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas size sama dengan foto
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // Draw foto asli
+                ctx.drawImage(img, 0, 0);
+                
+                // Buat watermark di canvas (teks dan peta)
+                await createWatermarkOnCanvas(ctx, canvas.width, canvas.height, mapImageData);
+                
+                // Konversi ke blob dan download
+                canvas.toBlob(function(blob) {
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    const fileName = `geotag-photo-${timestamp}.jpg`;
+                    
+                    // Buat URL untuk download
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showStatus('✅ Foto berhasil didownload!', 'success');
+                }, 'image/jpeg', 0.92);
+            };
+            
+            img.src = mediaData.originalDataUrl;
+        }
+        
+        // Tangkap screenshot peta Leaflet
+        async function captureMapScreenshot() {
+            return new Promise((resolve, reject) => {
+                const mapContainer = document.getElementById('watermarkMap');
+                if (!mapContainer) {
+                    reject('Map container not found');
+                    return;
+                }
+                
+                // Tunggu sejenak agar Leaflet selesai render
+                setTimeout(async () => {
+                    try {
+                        // Buat container kloning untuk screenshot
+                        const cloneContainer = mapContainer.cloneNode(true);
+                        cloneContainer.style.width = '250px';
+                        cloneContainer.style.height = '180px';
+                        cloneContainer.style.visibility = 'visible';
+                        cloneContainer.style.opacity = '1';
+                        document.body.appendChild(cloneContainer);
+                        
+                        // Pastikan peta di-render ulang
+                        if (watermarkMap) {
+                            watermarkMap.invalidateSize();
+                            await new Promise(resolve => setTimeout(resolve, 300));
+                        }
+                        
+                        // Gunakan html2canvas untuk menangkap screenshot
+                        const canvas = await html2canvas(cloneContainer, {
+                            backgroundColor: '#f8f8f8',
+                            scale: 2,
+                            useCORS: true,
+                            logging: false,
+                            allowTaint: true
+                        });
+                        
+                        document.body.removeChild(cloneContainer);
+                        resolve(canvas);
+                    } catch (error) {
+                        reject(error);
+                    }
+                }, 500);
+            });
+        }
+        
+        // Buat watermark di canvas (untuk output)
+        async function createWatermarkOnCanvas(ctx, imgWidth, imgHeight, mapScreenshot) {
+            // Ukuran teks relatif terhadap lebar gambar
+            const baseFontSize = Math.max(24, imgWidth * 0.025);
+            const lineSpacing = baseFontSize * 1.3;
+            
+            // Posisi teks di kanan atas
+            const textX = imgWidth - Math.max(30, imgWidth * 0.05);
+            const textY = Math.max(30, imgHeight * 0.05);
+            
+            // Teks tanggal dan waktu
+            const selectedDateTime = getSelectedDateTime();
+            ctx.font = `bold ${baseFontSize}px Arial`;
+            ctx.fillStyle = 'white';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'top';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.fillText(formatIndonesianDateTime(selectedDateTime), textX, textY);
+            
+            // Teks koordinat
+            ctx.font = `${baseFontSize * 0.9}px "Courier New", monospace`;
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillText(`${currentCoords.lat.toFixed(6)}, ${currentCoords.lng.toFixed(6)}`, 
+                        textX, textY + lineSpacing);
+            
+            // Teks jalan
+            const street = document.getElementById('street').value.trim() || 'Jl. Tidak Diketahui';
+            ctx.font = `${baseFontSize}px Arial`;
+            ctx.fillStyle = 'white';
+            ctx.fillText(street, textX, textY + lineSpacing * 2);
+            
+            // Teks kecamatan dan kota
+            const district = document.getElementById('district').value.trim();
+            const city = document.getElementById('city').value.trim();
+            let districtText = '';
+            if (district && city) {
+                districtText = `Kec. ${district}, ${city}`;
+            } else if (district) {
+                districtText = `Kec. ${district}`;
+            } else if (city) {
+                districtText = city;
+            } else {
+                districtText = 'Lokasi tidak diketahui';
+            }
+            ctx.fillText(districtText, textX, textY + lineSpacing * 3);
+            
+            // Teks provinsi
+            const province = document.getElementById('province').value.trim() || 'Provinsi tidak diketahui';
+            ctx.font = `bold ${baseFontSize}px Arial`;
+            ctx.fillText(province, textX, textY + lineSpacing * 4);
+            
+            // Reset shadow
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // Gambar peta di kiri bawah
+            const mapWidth = Math.min(250, imgWidth * 0.25);
+            const mapHeight = Math.min(180, imgHeight * 0.2);
+            const mapX = Math.max(30, imgWidth * 0.03);
+            const mapY = imgHeight - mapHeight - Math.max(30, imgHeight * 0.03);
+            
+            // Jika ada screenshot peta, gunakan itu
+            if (mapScreenshot) {
+                // Gambar screenshot peta
+                ctx.drawImage(mapScreenshot, mapX, mapY, mapWidth, mapHeight);
+            } else {
+                // Fallback: gambar peta sederhana
+                drawSimpleMap(ctx, mapX, mapY, mapWidth, mapHeight);
+            }
+            
+            // Tambahkan border putih dan shadow untuk peta
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+            ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
+        
+        // Fungsi fallback untuk menggambar peta sederhana
+        function drawSimpleMap(ctx, x, y, width, height) {
+            // Background peta (abu-abu terang)
+            ctx.fillStyle = '#f8f8f8';
+            ctx.fillRect(x, y, width, height);
+            
+            // Gambar grid sederhana untuk peta
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 0.5;
+            const gridSize = 15;
+            
+            for (let gridX = x + gridSize; gridX < x + width; gridX += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(gridX, y);
+                ctx.lineTo(gridX, y + height);
+                ctx.stroke();
+            }
+            
+            for (let gridY = y + gridSize; gridY < y + height; gridY += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, gridY);
+                ctx.lineTo(x + width, gridY);
+                ctx.stroke();
+            }
+            
+            // Gambar jalan utama (horizontal)
+            ctx.strokeStyle = '#bbb';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x + width * 0.1, y + height * 0.5);
+            ctx.lineTo(x + width * 0.9, y + height * 0.5);
+            ctx.stroke();
+            
+            // Gambar jalan utama (vertikal)
+            ctx.beginPath();
+            ctx.moveTo(x + width * 0.5, y + height * 0.3);
+            ctx.lineTo(x + width * 0.5, y + height * 0.7);
+            ctx.stroke();
+            
+            // Gambar marker di lokasi
+            const markerX = x + width * 0.5;
+            const markerY = y + height * 0.5;
+            const markerSize = Math.min(width, height) * 0.1;
+            
+            // Outer marker (red dengan shadow)
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(markerX, markerY, markerSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            // Inner marker (white)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(markerX, markerY, markerSize/2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Teks "LOKASI" di bawah peta
+            ctx.font = `bold ${markerSize * 0.8}px Arial`;
+            ctx.fillStyle = '#666';
+            ctx.textAlign = 'center';
+            ctx.fillText('LOKASI', x + width/2, y + height - markerSize/3);
+            
+            // Koordinat singkat di dalam peta
+            ctx.font = `${markerSize * 0.6}px "Courier New", monospace`;
+            ctx.fillStyle = '#333';
+            ctx.fillText(`${currentCoords.lat.toFixed(2)}`, x + width/2, y + markerSize * 1.5);
+            ctx.fillText(`${currentCoords.lng.toFixed(2)}`, x + width/2, y + markerSize * 2.5);
+        }
+        
+        // Reset semua
+        function resetAll() {
+            if (confirm('Apakah Anda yakin ingin mereset semua?')) {
+                // Reset form
+                document.getElementById('street').value = '';
+                document.getElementById('district').value = '';
+                document.getElementById('city').value = '';
+                document.getElementById('province').value = '';
+                document.getElementById('locationSearch').value = '';
+                
+                // Reset waktu
+                setCurrentTime();
+                document.getElementById('autoUpdateTime').checked = true;
+                
+                // Reset koordinat
+                currentCoords = { lat: -6.2088, lng: 106.8456 };
+                updateSelectedLocation(-6.2088, 106.8456);
+                
+                // Reset preview
+                document.getElementById('previewImage').classList.add('hidden');
+                document.getElementById('watermarkText').classList.add('hidden');
+                document.getElementById('watermarkMapContainer').classList.add('hidden');
+                document.getElementById('cameraPlaceholder').classList.remove('hidden');
+                
+                // Reset data
+                mediaData = { originalDataUrl: '', type: 'photo' };
+                
+                // Nonaktifkan tombol download
+                document.getElementById('downloadBtn').disabled = true;
+                
+                // Reset peta watermark
+                if (watermarkMap) {
+                    watermarkMap.remove();
+                    watermarkMap = null;
+                }
+                
+                // Restart auto time update
+                startAutoTimeUpdate();
+                
+                showStatus('🔄 Semua data telah direset!', 'info');
+            }
+        }
+        
+        // Tampilkan status
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.textContent = message;
+            statusElement.className = `status-message ${type}`;
+            statusElement.classList.remove('hidden');
+            
+            // Auto hide setelah beberapa detik
+            setTimeout(() => {
+                statusElement.classList.add('hidden');
+            }, 3000);
+        }
+        
+        // Inisialisasi Geotag Camera
+        function initGeotagCamera() {
+            // Inisialisasi peta
+            initLocationMap();
+            
+            // Set waktu default ke sekarang
+            setCurrentTime();
+            
+            // Mulai update waktu otomatis
+            startAutoTimeUpdate();
+            
+            // Update watermark display dengan data default
+            updateWatermarkDisplay();
+            
+            // Event listener untuk input file
+            document.getElementById('photoInput').addEventListener('change', function() {
+                processPhoto(this);
+            });
+            
+            // Event listener untuk update otomatis
+            document.getElementById('street').addEventListener('input', updateWatermarkDisplay);
+            document.getElementById('district').addEventListener('input', updateWatermarkDisplay);
+            document.getElementById('city').addEventListener('input', updateWatermarkDisplay);
+            document.getElementById('province').addEventListener('input', updateWatermarkDisplay);
+            document.getElementById('dateInput').addEventListener('change', setCustomTime);
+            document.getElementById('timeInput').addEventListener('change', setCustomTime);
+            document.getElementById('autoUpdateTime').addEventListener('change', startAutoTimeUpdate);
+        }
+        
+        // =============================
+        // MAIN INITIALIZATION
+        // =============================
+        
+        // Inisialisasi ketika halaman dimuat
+        window.addEventListener('load', () => {
+            // Inisialisasi bumi intro
+            initIntroEarth();
+            
+            // Mulai loading
+            startLoading();
+            
+            // Event listener untuk tombol
+            document.getElementById('exploreButton').addEventListener('click', enterEarthExplorer);
+            document.getElementById('geotagButton').addEventListener('click', openGeotagCamera);
+            
+            // Tambahkan style untuk efek ripple
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes ripple-animation {
+                    to {
+                        transform: scale(4);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Efek ripple pada tombol
+            document.querySelectorAll('.enter-button, .camera-btn, .control-btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    // Efek ripple
+                    const ripple = document.createElement('span');
+                    const rect = this.getBoundingClientRect();
+                    const size = Math.max(rect.width, rect.height);
+                    const x = e.clientX - rect.left - size/2;
+                    const y = e.clientY - rect.top - size/2;
+                    
+                    ripple.style.cssText = `
+                        position: absolute;
+                        border-radius: 50%;
+                        background: rgba(255, 255, 255, 0.7);
+                        transform: scale(0);
+                        animation: ripple-animation 0.6s linear;
+                        width: ${size}px;
+                        height: ${size}px;
+                        top: ${y}px;
+                        left: ${x}px;
+                        pointer-events: none;
+                    `;
+                    
+                    this.appendChild(ripple);
+                    
+                    setTimeout(() => {
+                        ripple.remove();
+                    }, 600);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
