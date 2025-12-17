@@ -1,0 +1,2118 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AzConnection Explorer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        
+        body {
+            background-color: #0a0a1a;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* Halaman Intro - Roblox Earth */
+        #intro-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #000428, #004e92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            overflow: hidden;
+        }
+        
+        /* Container untuk bumi */
+        .earth-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            margin-bottom: 40px;
+            perspective: 1000px;
+        }
+        
+        /* Bumi 3D dengan tema Roblox */
+        .roblox-earth {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            animation: rotateEarth 40s infinite linear;
+        }
+        
+        @keyframes rotateEarth {
+            0% { transform: rotateY(0deg) rotateX(15deg); }
+            100% { transform: rotateY(360deg) rotateX(15deg); }
+        }
+        
+        /* Lapisan bumi - dibuat dengan tema Roblox */
+        .earth-layer {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border-style: solid;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+        }
+        
+        /* Lapisan dasar - biru seperti Roblox */
+        .earth-base {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle at 30% 30%, #4287f5, #1e3a8a);
+            border: 8px solid #1ed760;
+            border-width: 8px 0 8px 0;
+        }
+        
+        /* Grid overlay - seperti peta grid */
+        .earth-grid {
+            width: 520px;
+            height: 520px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+        
+        /* Benua-benua dengan gaya Roblox blocks */
+        .roblox-continent {
+            position: absolute;
+            background-color: rgba(30, 215, 96, 0.85);
+            border-radius: 8px;
+            transform-style: preserve-3d;
+            box-shadow: 
+                inset 0 -10px 20px rgba(0,0,0,0.3),
+                0 5px 15px rgba(0,0,0,0.5);
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        
+        /* Asia - block besar */
+        .continent-asia {
+            width: 180px;
+            height: 120px;
+            top: 35%;
+            left: 60%;
+            transform: rotateY(30deg) rotateX(-10deg) translateZ(250px);
+            background: linear-gradient(45deg, #1ed760, #0fa548);
+            clip-path: polygon(0% 0%, 100% 10%, 90% 100%, 10% 90%);
+        }
+        
+        /* Amerika - block panjang */
+        .continent-america {
+            width: 150px;
+            height: 180px;
+            top: 45%;
+            left: 20%;
+            transform: rotateY(-30deg) rotateX(5deg) translateZ(250px);
+            background: linear-gradient(45deg, #4287f5, #2a5db0);
+            clip-path: polygon(10% 0%, 100% 0%, 90% 100%, 0% 100%);
+        }
+        
+        /* Eropa - block kecil */
+        .continent-europe {
+            width: 100px;
+            height: 80px;
+            top: 30%;
+            left: 45%;
+            transform: rotateY(10deg) rotateX(-5deg) translateZ(250px);
+            background: linear-gradient(45deg, #ff6b6b, #e53e3e);
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+        }
+        
+        /* Afrika - block segitiga */
+        .continent-africa {
+            width: 120px;
+            height: 140px;
+            top: 55%;
+            left: 50%;
+            transform: rotateY(15deg) rotateX(10deg) translateZ(250px);
+            background: linear-gradient(45deg, #ffd166, #f59e0b);
+            clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+        }
+        
+        /* Australia - block kecil */
+        .continent-australia {
+            width: 90px;
+            height: 70px;
+            top: 70%;
+            left: 75%;
+            transform: rotateY(-15deg) rotateX(5deg) translateZ(250px);
+            background: linear-gradient(45deg, #9d4edd, #7b2cbf);
+            clip-path: polygon(0% 20%, 100% 0%, 80% 100%, 20% 80%);
+        }
+        
+        /* Pin lokasi Roblox */
+        .roblox-pin {
+            position: absolute;
+            width: 40px;
+            height: 60px;
+            transform-style: preserve-3d;
+            z-index: 10;
+        }
+        
+        .pin-body {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #ff6b6b;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            top: 0;
+            left: 5px;
+            box-shadow: 0 0 10px rgba(255,107,107,0.8);
+        }
+        
+        .pin-stem {
+            position: absolute;
+            width: 6px;
+            height: 30px;
+            background-color: #ccc;
+            top: 30px;
+            left: 17px;
+            border-radius: 0 0 3px 3px;
+        }
+        
+        /* Posisi pin di berbagai lokasi */
+        .pin-1 {
+            top: 40%;
+            left: 65%;
+            transform: rotateY(40deg) translateZ(250px);
+            animation: floatPin 3s infinite ease-in-out;
+        }
+        
+        .pin-2 {
+            top: 50%;
+            left: 25%;
+            transform: rotateY(-20deg) translateZ(250px);
+            animation: floatPin 3s infinite ease-in-out 0.5s;
+        }
+        
+        .pin-3 {
+            top: 35%;
+            left: 48%;
+            transform: rotateY(10deg) translateZ(250px);
+            animation: floatPin 3s infinite ease-in-out 1s;
+        }
+        
+        .pin-4 {
+            top: 60%;
+            left: 55%;
+            transform: rotateY(20deg) translateZ(250px);
+            animation: floatPin 3s infinite ease-in-out 1.5s;
+        }
+        
+        @keyframes floatPin {
+            0%, 100% { transform: rotateY(var(--ry)) translateZ(250px) translateY(0); }
+            50% { transform: rotateY(var(--ry)) translateZ(250px) translateY(-10px); }
+        }
+        
+        /* Garis lintang/bujur */
+        .latitude-line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .lat-1 {
+            width: 450px;
+            height: 450px;
+        }
+        
+        .lat-2 {
+            width: 400px;
+            height: 400px;
+        }
+        
+        .longitude-line {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 500px;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.3), transparent);
+            transform-origin: center;
+        }
+        
+        .long-1 { transform: translate(-50%, -50%) rotate(0deg); }
+        .long-2 { transform: translate(-50%, -50%) rotate(45deg); }
+        .long-3 { transform: translate(-50%, -50%) rotate(90deg); }
+        .long-4 { transform: translate(-50%, -50%) rotate(135deg); }
+        
+        /* UI kontrol seperti Google Earth */
+        .earth-controls {
+            position: absolute;
+            bottom: 100px;
+            right: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 20;
+        }
+        
+        .control-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #1ed760;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid rgba(30, 215, 96, 0.5);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .control-button:hover {
+            background: rgba(30, 215, 96, 0.2);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(30, 215, 96, 0.5);
+        }
+        
+        /* Search bar seperti Google Earth */
+        .earth-search {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 400px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 30px;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border: 2px solid rgba(66, 135, 245, 0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            z-index: 20;
+        }
+        
+        .search-icon {
+            color: #1ed760;
+            font-size: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 18px;
+            outline: none;
+        }
+        
+        .search-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        /* Zoom level indicator */
+        .zoom-indicator {
+            position: absolute;
+            bottom: 100px;
+            left: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 107, 107, 0.5);
+            z-index: 20;
+        }
+        
+        .zoom-label {
+            color: #ff6b6b;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .zoom-bar {
+            width: 200px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .zoom-level {
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(90deg, #4287f5, #1ed760);
+            border-radius: 4px;
+        }
+        
+        /* Koordinat display */
+        .coordinates {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 209, 102, 0.5);
+            font-family: monospace;
+            z-index: 20;
+        }
+        
+        /* Intro Content */
+        .intro-content {
+            position: absolute;
+            top: 120px;
+            left: 50px;
+            text-align: left;
+            z-index: 20;
+            max-width: 500px;
+        }
+        
+        .intro-title {
+            font-size: 4rem;
+            font-weight: 900;
+            color: white;
+            text-shadow: 3px 3px 0 #ff6b6b, 6px 6px 0 rgba(0,0,0,0.3);
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #4287f5, #1ed760);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .intro-subtitle {
+            font-size: 1.5rem;
+            color: #1ed760;
+            margin-bottom: 20px;
+            font-weight: 300;
+        }
+        
+        .intro-description {
+            font-size: 1.1rem;
+            color: #ddd;
+            line-height: 1.6;
+            background: rgba(0,0,0,0.5);
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 4px solid #4287f5;
+            margin-bottom: 30px;
+        }
+        
+        /* Enter Button */
+        .enter-button {
+            padding: 20px 50px;
+            font-size: 1.8rem;
+            background: linear-gradient(45deg, #4287f5, #1ed760);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(66, 135, 245, 0.4);
+            position: relative;
+            overflow: hidden;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .enter-button:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(66, 135, 245, 0.6);
+        }
+        
+        .enter-button:active {
+            transform: translateY(0) scale(1);
+        }
+        
+        .enter-button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255,255,255,0.1);
+            transform: rotate(30deg);
+            transition: all 0.5s;
+            z-index: -1;
+        }
+        
+        .enter-button:hover::after {
+            transform: rotate(30deg) translate(10%, 10%);
+        }
+        
+        /* Satellite view toggle */
+        .view-toggle {
+            position: absolute;
+            top: 50px;
+            right: 50px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid rgba(30, 215, 96, 0.5);
+            z-index: 20;
+        }
+        
+        .toggle-label {
+            color: #1ed760;
+            font-weight: bold;
+        }
+        
+        .toggle-switch {
+            width: 50px;
+            height: 25px;
+            background: #4287f5;
+            border-radius: 25px;
+            position: relative;
+            cursor: pointer;
+        }
+        
+        .toggle-knob {
+            position: absolute;
+            width: 21px;
+            height: 21px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+        
+        /* Transition Effect */
+        .transition-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a1a;
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        
+        .transition-text {
+            font-size: 3rem;
+            color: #1ed760;
+            margin-bottom: 30px;
+            text-align: center;
+            opacity: 0;
+        }
+        
+        .loading-bar {
+            width: 300px;
+            height: 10px;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .loading-progress {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #4287f5, #1ed760);
+            border-radius: 5px;
+            transition: width 2s ease;
+        }
+        
+        /* Loading satellites */
+        .loading-satellites {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        
+        .satellite {
+            position: absolute;
+            width: 40px;
+            height: 20px;
+            background: #4287f5;
+            border-radius: 10px;
+            animation: orbitSatellite 20s infinite linear;
+        }
+        
+        .satellite::before {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #1ed760;
+            border-radius: 50%;
+            top: 5px;
+            left: 5px;
+        }
+        
+        .satellite::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 4px;
+            background: #ff6b6b;
+            top: 8px;
+            right: -15px;
+            border-radius: 2px;
+        }
+        
+        @keyframes orbitSatellite {
+            0% {
+                transform: rotate(0deg) translateX(300px) rotate(0deg);
+                top: 50%;
+                left: 50%;
+            }
+            100% {
+                transform: rotate(360deg) translateX(300px) rotate(-360deg);
+                top: 50%;
+                left: 50%;
+            }
+        }
+        
+        /* Halaman Utama (Drag & Drop) */
+        #main-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #4287f5 60%, #1ed760 40%);
+            display: none;
+            overflow: hidden;
+        }
+        
+        /* Sisa CSS untuk halaman utama (sama seperti sebelumnya) */
+        /* ... Kode CSS untuk halaman utama drag & drop ... */
+        
+        /* Roblox Character di Halaman Utama */
+        #roblox-character {
+            position: absolute;
+            width: 90px;
+            height: 140px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            cursor: grab;
+            transition: transform 0.1s ease;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
+        }
+        
+        #roblox-character:active {
+            cursor: grabbing;
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        
+        /* Roblox CSS Parts */
+        .roblox-head {
+            position: absolute;
+            width: 70px;
+            height: 70px;
+            background-color: #88c7e6;
+            border-radius: 10px;
+            top: 0;
+            left: 10px;
+            overflow: hidden;
+            border: 2px solid #5a9bb8;
+        }
+        
+        .roblox-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .roblox-eye {
+            position: absolute;
+            width: 16px;
+            height: 24px;
+            background-color: white;
+            border-radius: 50%;
+            top: 20px;
+            border: 2px solid #333;
+        }
+        
+        .roblox-eye.left {
+            left: 12px;
+        }
+        
+        .roblox-eye.right {
+            right: 12px;
+        }
+        
+        .roblox-pupil {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #000;
+            border-radius: 50%;
+            top: 8px;
+            left: 4px;
+        }
+        
+        .roblox-mouth {
+            position: absolute;
+            width: 30px;
+            height: 12px;
+            background-color: #ff6b6b;
+            border-radius: 0 0 15px 15px;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .roblox-body {
+            position: absolute;
+            width: 80px;
+            height: 60px;
+            background-color: #4287f5;
+            top: 70px;
+            left: 5px;
+            border-radius: 10px;
+            border: 2px solid #2a5db0;
+        }
+        
+        .roblox-shirt {
+            position: absolute;
+            width: 70px;
+            height: 30px;
+            background-color: #ff6b6b;
+            top: 5px;
+            left: 5px;
+            border-radius: 8px;
+        }
+        
+        .roblox-arm {
+            position: absolute;
+            width: 20px;
+            height: 50px;
+            background-color: #88c7e6;
+            top: 75px;
+            border-radius: 10px;
+            border: 2px solid #5a9bb8;
+        }
+        
+        .roblox-arm.left {
+            left: 0;
+            transform: rotate(15deg);
+        }
+        
+        .roblox-arm.right {
+            right: 0;
+            transform: rotate(-15deg);
+        }
+        
+        .roblox-leg {
+            position: absolute;
+            width: 25px;
+            height: 50px;
+            background-color: #1e6bc9;
+            bottom: 0;
+            border-radius: 10px 10px 0 0;
+            border: 2px solid #1557a8;
+        }
+        
+        .roblox-leg.left {
+            left: 20px;
+        }
+        
+        .roblox-leg.right {
+            right: 20px;
+        }
+        
+        .roblox-logo {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #fff;
+            border-radius: 5px;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #ff6b6b;
+            font-size: 16px;
+        }
+        
+        /* Target Options */
+        .target-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .target-option {
+            position: absolute;
+            width: 220px;
+            height: 280px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            pointer-events: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .target-option:hover {
+            transform: translateY(-10px);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .target-option.active {
+            border-color: #1ed760;
+            box-shadow: 0 0 30px rgba(30, 215, 96, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .target-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #1ed760;
+            transition: transform 0.3s ease;
+        }
+        
+        .target-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+        
+        .target-description {
+            font-size: 0.9rem;
+            color: #ddd;
+            line-height: 1.4;
+        }
+        
+        /* Position for targets */
+        .target-1 {
+            top: 15%;
+            left: 10%;
+        }
+        
+        .target-2 {
+            top: 15%;
+            right: 10%;
+        }
+        
+        .target-3 {
+            bottom: 15%;
+            left: 10%;
+        }
+        
+        .target-4 {
+            bottom: 15%;
+            right: 10%;
+        }
+        
+        .target-5 {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 250px;
+            height: 300px;
+            background: rgba(66, 135, 245, 0.15);
+            border: 3px dashed #4287f5;
+        }
+        
+        .target-5 .target-icon {
+            color: #4287f5;
+        }
+        
+        /* Instructions */
+        .instructions {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #1ed760;
+            max-width: 500px;
+            width: 90%;
+            z-index: 50;
+        }
+        
+        .instructions h3 {
+            color: #1ed760;
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        
+        .instructions p {
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+        
+        /* Ground */
+        .ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 20%;
+            background: linear-gradient(to top, #5c4b37, #8b7355);
+            z-index: 1;
+        }
+        
+        /* Roblox Blocks */
+        .roblox-block {
+            position: absolute;
+            border-radius: 5px;
+            z-index: 2;
+            box-shadow: inset 0 -5px 0 rgba(0,0,0,0.2);
+        }
+        
+        .block-1 {
+            width: 80px;
+            height: 80px;
+            background-color: #ff6b6b;
+            top: 20%;
+            left: 5%;
+        }
+        
+        .block-2 {
+            width: 60px;
+            height: 60px;
+            background-color: #4287f5;
+            top: 15%;
+            right: 8%;
+        }
+        
+        .block-3 {
+            width: 70px;
+            height: 70px;
+            background-color: #1ed760;
+            top: 30%;
+            left: 30%;
+        }
+        
+        .block-4 {
+            width: 50px;
+            height: 50px;
+            background-color: #ffd166;
+            bottom: 25%;
+            right: 20%;
+        }
+        
+        /* Roblox Logo Header */
+        .roblox-header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+        }
+        
+        .roblox-logo-header {
+            font-size: 3rem;
+            font-weight: 900;
+            color: white;
+            text-shadow: 3px 3px 0 #ff6b6b, 6px 6px 0 rgba(0,0,0,0.2);
+            letter-spacing: 2px;
+        }
+        
+        .roblox-tagline {
+            font-size: 1.2rem;
+            color: #1ed760;
+            font-weight: bold;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+        
+        /* Drop Zone Effect */
+        .drop-zone {
+            position: absolute;
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: 5;
+            transition: all 0.3s ease;
+            display: none;
+        }
+        
+        .drop-zone.active {
+            display: block;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(30, 215, 96, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(30, 215, 96, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(30, 215, 96, 0); }
+        }
+        
+        /* Success Effect */
+        .success-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .success-content {
+            background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            border: 5px solid #1ed760;
+            box-shadow: 0 0 50px rgba(30, 215, 96, 0.5);
+            animation: popIn 0.5s ease;
+        }
+        
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .success-title {
+            font-size: 2.5rem;
+            color: #1ed760;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 0 #4287f5;
+        }
+        
+        .success-message {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+        
+        .continue-button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background-color: #4287f5;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        
+        .continue-button:hover {
+            background-color: #1ed760;
+            color: white;
+            transform: scale(1.05);
+        }
+        
+        /* Roblox Swing Animation */
+        @keyframes swing {
+            0%, 100% { transform: translate(-50%, -50%) rotate(-5deg); }
+            50% { transform: translate(-50%, -50%) rotate(5deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 1100px) {
+            .earth-container {
+                width: 400px;
+                height: 400px;
+            }
+            
+            .earth-base {
+                width: 350px;
+                height: 350px;
+            }
+            
+            .earth-grid {
+                width: 370px;
+                height: 370px;
+            }
+            
+            .intro-title {
+                font-size: 2.5rem;
+            }
+            
+            .earth-search {
+                width: 300px;
+                top: 30px;
+            }
+            
+            .intro-content {
+                top: 80px;
+                left: 30px;
+                max-width: 300px;
+            }
+            
+            .earth-controls {
+                bottom: 80px;
+                right: 30px;
+            }
+            
+            .zoom-indicator {
+                bottom: 80px;
+                left: 30px;
+            }
+            
+            .target-option {
+                width: 180px;
+                height: 240px;
+                padding: 15px;
+            }
+            
+            .target-icon {
+                font-size: 3rem;
+            }
+            
+            .target-title {
+                font-size: 1.2rem;
+            }
+            
+            .target-description {
+                font-size: 0.8rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .earth-container {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .earth-base {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .earth-grid {
+                width: 270px;
+                height: 270px;
+            }
+            
+            .intro-title {
+                font-size: 2rem;
+            }
+            
+            .intro-subtitle {
+                font-size: 1rem;
+            }
+            
+            .earth-search {
+                width: 250px;
+                padding: 10px 15px;
+            }
+            
+            .enter-button {
+                padding: 15px 30px;
+                font-size: 1.2rem;
+            }
+            
+            #roblox-character {
+                width: 70px;
+                height: 120px;
+            }
+            
+            .roblox-head {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .roblox-body {
+                width: 70px;
+                height: 50px;
+            }
+            
+            .target-option {
+                width: 150px;
+                height: 200px;
+                padding: 10px;
+            }
+            
+            .target-icon {
+                font-size: 2.5rem;
+            }
+            
+            .target-title {
+                font-size: 1rem;
+            }
+            
+            .target-description {
+                font-size: 0.7rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Halaman Intro - Roblox Earth -->
+    <div id="intro-screen">
+        <!-- Satelit loading -->
+        <div class="loading-satellites" id="loading-satellites"></div>
+        
+        <!-- Kontrol UI seperti Google Earth -->
+        <div class="earth-search">
+            <div class="search-icon"><i class="fas fa-search"></i></div>
+            <input type="text" class="search-input" placeholder="Butuh Apa ?" id="search-input">
+        </div>
+        
+        <!-- Toggle view -->
+        <div class="view-toggle">
+            <div class="toggle-label">SATELITE VIEW</div>
+            <div class="toggle-switch" id="toggle-switch">
+                <div class="toggle-knob"></div>
+            </div>
+        </div>
+        
+        <!-- Zoom indicator -->
+        <div class="zoom-indicator">
+            <div class="zoom-label">ZOOM LEVEL</div>
+            <div class="zoom-bar">
+                <div class="zoom-level"></div>
+            </div>
+        </div>
+        
+        <!-- Coordinates display -->
+        <div class="coordinates" id="coordinates">
+            Lat: 40.7128° N, Long: 74.0060° W
+        </div>
+        
+        <!-- Earth Container -->
+        <div class="earth-container">
+            <div class="roblox-earth" id="roblox-earth">
+                <!-- Grid lines -->
+                <div class="latitude-line lat-1"></div>
+                <div class="latitude-line lat-2"></div>
+                <div class="longitude-line long-1"></div>
+                <div class="longitude-line long-2"></div>
+                <div class="longitude-line long-3"></div>
+                <div class="longitude-line long-4"></div>
+                
+                <!-- Earth layers -->
+                <div class="earth-layer earth-base"></div>
+                <div class="earth-layer earth-grid"></div>
+                
+                <!-- Roblox continents -->
+                <div class="roblox-continent continent-asia"></div>
+                <div class="roblox-continent continent-america"></div>
+                <div class="roblox-continent continent-europe"></div>
+                <div class="roblox-continent continent-africa"></div>
+                <div class="roblox-continent continent-australia"></div>
+                
+                <!-- Roblox pins -->
+                <div class="roblox-pin pin-1" style="--ry: 40deg">
+                    <div class="pin-body"></div>
+                    <div class="pin-stem"></div>
+                </div>
+                <div class="roblox-pin pin-2" style="--ry: -20deg">
+                    <div class="pin-body"></div>
+                    <div class="pin-stem"></div>
+                </div>
+                <div class="roblox-pin pin-3" style="--ry: 10deg">
+                    <div class="pin-body"></div>
+                    <div class="pin-stem"></div>
+                </div>
+                <div class="roblox-pin pin-4" style="--ry: 20deg">
+                    <div class="pin-body"></div>
+                    <div class="pin-stem"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Kontrol seperti Google Earth -->
+        <div class="earth-controls">
+            <div class="control-button" id="zoom-in">
+                <i class="fas fa-plus"></i>
+            </div>
+            <div class="control-button" id="zoom-out">
+                <i class="fas fa-minus"></i>
+            </div>
+            <div class="control-button" id="rotate-left">
+                <i class="fas fa-undo"></i>
+            </div>
+            <div class="control-button" id="rotate-right">
+                <i class="fas fa-redo"></i>
+            </div>
+            <div class="control-button" id="reset-view">
+                <i class="fas fa-globe-americas"></i>
+            </div>
+        </div>
+        
+        <!-- Intro Content -->
+        <div class="intro-content">
+            <h1 class="intro-title">AzConnection</h1>
+            <h2 class="intro-subtitle">Koneksi Terbaik</h2>
+            <p class="intro-description">
+                AZConnection menawarkan platform terintegrasi dengan tools edit canggih dan marketplace lengkap termasuk AzFood, AzGrocierries, AzShipping, dan kategori lainnya. Temukan solusi digital komprehensif untuk berbagai kebutuhan bisnis dan kreativitas dalam satu tempat
+            </p>
+            <button class="enter-button" id="enter-btn">
+                <i class="fas fa-rocket"></i> LAUNCH EXPLORER
+            </button>
+        </div>
+    </div>
+    
+    <!-- Transition Effect -->
+    <div class="transition-effect" id="transition-effect">
+        <div class="transition-text" id="transition-text">TERBAIK 
+        UNTUK KAMU</div>
+        <div class="loading-bar">
+            <div class="loading-progress" id="loading-progress"></div>
+        </div>
+    </div>
+    
+    <!-- Halaman Utama (Drag & Drop) -->
+    <div id="main-screen">
+        <!-- Ground -->
+        <div class="ground"></div>
+        
+        <!-- Roblox Blocks -->
+        <div class="roblox-block block-1"></div>
+        <div class="roblox-block block-2"></div>
+        <div class="roblox-block block-3"></div>
+        <div class="roblox-block block-4"></div>
+        
+        <!-- Roblox Header -->
+        <div class="roblox-header">
+            <div class="roblox-logo-header">AzCo</div>
+            <div class="roblox-tagline">FITUR - FITUR TERBAIK</div>
+        </div>
+        
+        <!-- Drop Zone -->
+        <div class="drop-zone" id="drop-zone"></div>
+        
+        <!-- Roblox Character -->
+        <div id="roblox-character">
+            <div class="roblox-head">
+                <div class="roblox-face">
+                    <div class="roblox-eye left">
+                        <div class="roblox-pupil"></div>
+                    </div>
+                    <div class="roblox-eye right">
+                        <div class="roblox-pupil"></div>
+                    </div>
+                    <div class="roblox-mouth"></div>
+                </div>
+            </div>
+            <div class="roblox-body">
+                <div class="roblox-shirt"></div>
+                <div class="roblox-logo">AzCo</div>
+            </div>
+            <div class="roblox-arm left"></div>
+            <div class="roblox-arm right"></div>
+            <div class="roblox-leg left"></div>
+            <div class="roblox-leg right"></div>
+        </div>
+        
+        <!-- Target Options -->
+        <div class="target-container">
+            <div class="target-option target-1" id="target-home">
+                <div class="target-icon"><i class="fas fa-store"></i></div>
+                <div class="target-title">WarungOnline</div>
+                <div class="target-description">AzConnection </div>
+            </div>
+            
+            <div class="target-option target-2" id="target-games">
+                <div class="target-icon"><i class="fas fa-tools"></i></div>
+                <div class="target-title">Tools Digital</div>
+                <div class="target-description">Tools Edit Mas Eko Cakep</div></div></div>
+            </div>
+            
+           <!-- <div class="target-option target-3" id="target-avatar">
+                <div class="target-icon"><i class="fas fa-tshirt"></i></div>
+                <div class="target-title">Promo Marketing </div>
+                <div class="target-description"></div>
+            </div>-->
+            
+            <!--<div class="target-option target-4" id="target-create">
+                <div class="target-icon"><i class="fas fa-cube"></i></div>
+                <div class="target-title">Studio Kreator</div>
+                <div class="target-description">Buat game dan pengalaman Anda sendiri dengan Roblox Studio</div>
+            </div>-->
+            
+            <!--<div class="target-option target-5" id="target-portal">
+                <div class="target-icon"><i class="fas fa-portal-enter"></i></div>
+                <div class="target-title">Portal Petualangan</div>
+                <div class="target-description">Jatuhkan karakter Roblox di sini untuk memulai petualangan epik!</div>
+            </div>-->
+        </div>
+        
+        <!-- Instructions
+        <div class="instructions">
+            <h3>CARA BERMAIN</h3>
+            <p>Drag & drop karakter Roblox ke salah satu pilihan di layar. Jatuhkan di Portal Petualangan untuk memulai!</p>
+            <p><i>Gunakan mouse (klik & drag) atau sentuhan jari di layar sentuh</i></p>
+        </div> -->
+        
+        <!-- Success Effect -->
+        <div class="success-effect" id="success-effect">
+            <div class="success-content" id="success-content"></div>
+        </div>
+    </div>
+
+    <script>
+// ==================== HALAMAN INTRO - ROBLOX EARTH ====================
+
+// Elemen DOM untuk intro
+const introScreen = document.getElementById('intro-screen');
+const enterBtn = document.getElementById('enter-btn');
+const transitionEffect = document.getElementById('transition-effect');
+const transitionText = document.getElementById('transition-text');
+const loadingProgress = document.getElementById('loading-progress');
+const mainScreen = document.getElementById('main-screen');
+const robloxEarth = document.getElementById('roblox-earth');
+const searchInput = document.getElementById('search-input');
+const toggleSwitch = document.getElementById('toggle-switch');
+const toggleKnob = document.querySelector('.toggle-knob');
+const coordinates = document.getElementById('coordinates');
+const loadingSatellites = document.getElementById('loading-satellites');
+
+// Kontrol zoom dan rotasi
+const zoomInBtn = document.getElementById('zoom-in');
+const zoomOutBtn = document.getElementById('zoom-out');
+const rotateLeftBtn = document.getElementById('rotate-left');
+const rotateRightBtn = document.getElementById('rotate-right');
+const resetViewBtn = document.getElementById('reset-view');
+
+// Variabel untuk kontrol bumi
+let earthRotationY = 0;
+let earthRotationX = 15;
+let earthScale = 1;
+let isSatelliteView = false;
+let rotationSpeed = 1;
+
+// Buat satelit-satelit
+function createSatellites() {
+    for (let i = 0; i < 3; i++) {
+        const satellite = document.createElement('div');
+        satellite.classList.add('satellite');
+        
+        // Random orbit properties
+        const orbitRadius = 250 + Math.random() * 100;
+        const orbitDuration = 15 + Math.random() * 15;
+        const startAngle = Math.random() * 360;
+        
+        satellite.style.animation = `orbitSatellite ${orbitDuration}s infinite linear`;
+        satellite.style.animationDelay = `-${startAngle / 360 * orbitDuration}s`;
+        
+        // Random color
+        const colors = ['#4287f5', '#1ed760', '#ff6b6b', '#ffd166'];
+        satellite.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        loadingSatellites.appendChild(satellite);
+    }
+}
+
+// Inisialisasi satelit
+createSatellites();
+
+// Update koordinat berdasarkan posisi mouse
+document.addEventListener('mousemove', (e) => {
+    if (introScreen.style.display === 'none') return;
+    
+    // Hitung koordinat berdasarkan posisi mouse
+    const xPercent = e.clientX / window.innerWidth;
+    const yPercent = e.clientY / window.innerHeight;
+    
+    // Konversi ke koordinat geografis
+    const lat = Math.round((90 - yPercent * 180) * 100) / 100;
+    const long = Math.round((xPercent * 360 - 180) * 100) / 100;
+    
+    // Format koordinat
+    const latDir = lat >= 0 ? 'N' : 'S';
+    const longDir = long >= 0 ? 'E' : 'W';
+    
+    coordinates.textContent = `Lat: ${Math.abs(lat)}° ${latDir}, Long: ${Math.abs(long)}° ${longDir}`;
+});
+
+// Kontrol zoom in
+zoomInBtn.addEventListener('click', () => {
+    earthScale = Math.min(earthScale + 0.1, 2);
+    robloxEarth.style.transform = `rotateY(${earthRotationY}deg) rotateX(${earthRotationX}deg) scale(${earthScale})`;
+    updateZoomLevel();
+});
+
+// Kontrol zoom out
+zoomOutBtn.addEventListener('click', () => {
+    earthScale = Math.max(earthScale - 0.1, 0.5);
+    robloxEarth.style.transform = `rotateY(${earthRotationY}deg) rotateX(${earthRotationX}deg) scale(${earthScale})`;
+    updateZoomLevel();
+});
+
+// Kontrol rotasi kiri
+rotateLeftBtn.addEventListener('click', () => {
+    earthRotationY += 45;
+    robloxEarth.style.transform = `rotateY(${earthRotationY}deg) rotateX(${earthRotationX}deg) scale(${earthScale})`;
+});
+
+// Kontrol rotasi kanan
+rotateRightBtn.addEventListener('click', () => {
+    earthRotationY -= 45;
+    robloxEarth.style.transform = `rotateY(${earthRotationY}deg) rotateX(${earthRotationX}deg) scale(${earthScale})`;
+});
+
+// Reset view
+resetViewBtn.addEventListener('click', () => {
+    earthRotationY = 0;
+    earthRotationX = 15;
+    earthScale = 1;
+    robloxEarth.style.transform = `rotateY(${earthRotationY}deg) rotateX(${earthRotationX}deg) scale(${earthScale})`;
+    updateZoomLevel();
+});
+
+// Update zoom level indicator
+function updateZoomLevel() {
+    const zoomPercent = ((earthScale - 0.5) / 1.5) * 100;
+    document.querySelector('.zoom-level').style.width = `${zoomPercent}%`;
+}
+
+// Toggle satellite view
+toggleSwitch.addEventListener('click', () => {
+    isSatelliteView = !isSatelliteView;
+    
+    if (isSatelliteView) {
+        toggleKnob.style.transform = 'translateX(25px)';
+        document.querySelector('.toggle-label').textContent = 'MAP VIEW';
+        // Ubah warna bumi untuk tampilan satelit
+        document.querySelector('.earth-base').style.background = 
+            'radial-gradient(circle at 30% 30%, #2d3748, #1a202c)';
+    } else {
+        toggleKnob.style.transform = 'translateX(0)';
+        document.querySelector('.toggle-label').textContent = 'SATELLITE VIEW';
+        // Kembalikan ke warna default
+        document.querySelector('.earth-base').style.background = 
+            'radial-gradient(circle at 30% 30%, #4287f5, #1e3a8a)';
+    }
+});
+
+// Search functionality
+searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && searchInput.value.trim() !== '') {
+        const searchTerm = searchInput.value.toLowerCase();
+        let targetContinent = null;
+        
+        // Cari benua berdasarkan input
+        if (searchTerm.includes('asia') || searchTerm.includes('asia')) {
+            targetContinent = document.querySelector('.continent-asia');
+            earthRotationY = -30;
+            earthRotationX = -10;
+        } else if (searchTerm.includes('america') || searchTerm.includes('amerika')) {
+            targetContinent = document.querySelector('.continent-america');
+            earthRotationY = 30;
+            earthRotationX = 5;
+        } else if (searchTerm.includes('europe') || searchTerm.includes('eropa')) {
+            targetContinent = document.querySelector('.continent-europe');
+            earthRotationY = -10;
+            earthRotationX = -5;
+        } else if (searchTerm.includes('africa') || searchTerm.includes('afrika')) {
+            targetContinent = document.querySelector('.continent-africa');
+            earthRotationY = -15;
+            earthRotationX = 10;
+        } else if (searchTerm.includes('australia') || searchTerm.includes('australia')) {
+            targetContinent = document.querySelector('.continent-australia');
+            earthRotationY = 15;
+            earthRotationX = 5;
+        }
+        
+        if (targetContinent) {
+            // Zoom ke benua
+            earthScale = 1.5;
+            robloxEarth.style.transition = 'transform 2s ease';
+            robloxEarth.style.transform = `rotateY(${earthRotationY}deg) rotateX(${earthRotationX}deg) scale(${earthScale})`;
+            
+            // Highlight benua
+            targetContinent.style.boxShadow = '0 0 30px rgba(255, 215, 0, 0.8)';
+            
+            // Reset setelah beberapa detik
+            setTimeout(() => {
+                targetContinent.style.boxShadow = '';
+            }, 3000);
+            
+            updateZoomLevel();
+        }
+        
+        searchInput.value = '';
+    }
+});
+
+// Efek tombol enter
+enterBtn.addEventListener('click', startTransition);
+
+// Fungsi untuk memulai transisi ke halaman utama
+function startTransition() {
+    // Tampilkan efek transisi
+    transitionEffect.style.display = 'flex';
+    
+    // Animasikan teks transisi
+    setTimeout(() => {
+        transitionText.style.opacity = '1';
+        transitionText.style.transition = 'opacity 1s ease';
+    }, 100);
+    
+    // Animasikan progress bar
+    setTimeout(() => {
+        loadingProgress.style.width = '100%';
+    }, 300);
+    
+    // Setelah loading selesai, pindah ke halaman utama
+    setTimeout(() => {
+        // Sembunyikan intro screen
+        introScreen.style.opacity = '0';
+        introScreen.style.transition = 'opacity 1s ease';
+        
+        // Setelah transisi, sembunyikan intro dan tampilkan main screen
+        setTimeout(() => {
+            introScreen.style.display = 'none';
+            transitionEffect.style.display = 'none';
+            mainScreen.style.display = 'block';
+            
+            // Inisialisasi halaman utama setelah ditampilkan
+            setTimeout(() => {
+                initMainPage();
+            }, 100);
+        }, 1000);
+    }, 2500);
+}
+
+// ==================== HALAMAN UTAMA ====================
+
+// Elemen DOM untuk halaman utama
+const robloxChar = document.getElementById('roblox-character');
+const targets = document.querySelectorAll('.target-option');
+const dropZone = document.getElementById('drop-zone');
+const successEffect = document.getElementById('success-effect');
+const successContent = document.getElementById('success-content');
+
+// Variabel untuk drag & drop
+let isDragging = false;
+let currentX, currentY, initialX, initialY;
+let activeTarget = null;
+
+// Fungsi inisialisasi halaman utama
+function initMainPage() {
+    // Swing animation for Roblox character
+    function startSwingAnimation() {
+        robloxChar.style.animation = 'swing 2s ease-in-out infinite';
+    }
+    
+    function stopSwingAnimation() {
+        robloxChar.style.animation = '';
+    }
+    
+    // Initialize
+    startSwingAnimation();
+    
+    // Mouse Events for Desktop
+    robloxChar.addEventListener('mousedown', startDrag);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', stopDrag);
+    
+    // Touch Events for Mobile
+    robloxChar.addEventListener('touchstart', startDragTouch);
+    document.addEventListener('touchmove', dragTouch);
+    document.addEventListener('touchend', stopDrag);
+    
+    // Animate Roblox blocks
+    document.querySelectorAll('.roblox-block').forEach((block, index) => {
+        let floatDistance = Math.random() * 20 + 10;
+        let originalTop = parseFloat(getComputedStyle(block).top);
+        
+        function animateBlock() {
+            let currentTop = parseFloat(block.style.top || originalTop);
+            
+            // Floating animation
+            let newTop = originalTop + Math.sin(Date.now() / 1000 + index) * floatDistance;
+            
+            block.style.top = newTop + 'px';
+            requestAnimationFrame(animateBlock);
+        }
+        
+        animateBlock();
+    });
+    
+    // Tambahkan event listener untuk tombol pada target
+    document.querySelectorAll('.target-button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const targetId = this.closest('.target-option').id;
+            handleTargetClick(targetId);
+        });
+    });
+}
+
+// Fungsi untuk menangani klik tombol pada target
+function handleTargetClick(targetId) {
+    switch(targetId) {
+        case 'target-home':
+            openShopPage();
+            break;
+        case 'target-games':
+            openToolsPage();
+            break;
+        case 'target-avatar':
+            showPromoPage();
+            break;
+        case 'target-create':
+            showStudioPage();
+            break;
+        case 'target-portal':
+            startAdventure();
+            break;
+    }
+}
+
+// Fungsi untuk memulai drag (mouse)
+function startDrag(e) {
+    e.preventDefault();
+    isDragging = true;
+    
+    initialX = e.clientX - robloxChar.offsetLeft;
+    initialY = e.clientY - robloxChar.offsetTop;
+    
+    robloxChar.style.cursor = 'grabbing';
+    robloxChar.style.animation = '';
+    
+    // Show drop zone
+    dropZone.style.display = 'block';
+}
+
+// Fungsi untuk memulai drag (touch)
+function startDragTouch(e) {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+        isDragging = true;
+        
+        const touch = e.touches[0];
+        initialX = touch.clientX - robloxChar.offsetLeft;
+        initialY = touch.clientY - robloxChar.offsetTop;
+        
+        robloxChar.style.animation = '';
+        
+        // Show drop zone
+        dropZone.style.display = 'block';
+    }
+}
+
+// Fungsi untuk drag (mouse)
+function drag(e) {
+    if (!isDragging) return;
+    
+    e.preventDefault();
+    currentX = e.clientX - initialX;
+    currentY = e.clientY - initialY;
+    
+    // Batasi pergerakan dalam layar
+    currentX = Math.max(0, Math.min(currentX, window.innerWidth - robloxChar.offsetWidth));
+    currentY = Math.max(0, Math.min(currentY, window.innerHeight - robloxChar.offsetHeight));
+    
+    robloxChar.style.left = currentX + 'px';
+    robloxChar.style.top = currentY + 'px';
+    
+    // Cek apakah karakter berada di atas target
+    checkTargetOverlap(currentX, currentY);
+    
+    // Update drop zone position
+    updateDropZone(currentX, currentY);
+}
+
+// Fungsi untuk drag (touch)
+function dragTouch(e) {
+    if (!isDragging) return;
+    
+    if (e.touches.length === 1) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        currentX = touch.clientX - initialX;
+        currentY = touch.clientY - initialY;
+        
+        // Batasi pergerakan dalam layar
+        currentX = Math.max(0, Math.min(currentX, window.innerWidth - robloxChar.offsetWidth));
+        currentY = Math.max(0, Math.min(currentY, window.innerHeight - robloxChar.offsetHeight));
+        
+        robloxChar.style.left = currentX + 'px';
+        robloxChar.style.top = currentY + 'px';
+        
+        // Cek apakah karakter berada di atas target
+        checkTargetOverlap(currentX, currentY);
+        
+        // Update drop zone position
+        updateDropZone(currentX, currentY);
+    }
+}
+
+// Fungsi untuk menghentikan drag
+function stopDrag() {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    robloxChar.style.cursor = 'grab';
+    
+    // Hide drop zone
+    dropZone.classList.remove('active');
+    setTimeout(() => {
+        dropZone.style.display = 'none';
+    }, 300);
+    
+    // Jika ada target aktif, lakukan aksi
+    if (activeTarget) {
+        dropOnTarget(activeTarget);
+    } else {
+        // Jika tidak dijatuhkan di target, kembali ke posisi tengah
+        robloxChar.style.transition = 'left 0.5s ease, top 0.5s ease';
+        robloxChar.style.left = '50%';
+        robloxChar.style.top = '50%';
+        
+        setTimeout(() => {
+            robloxChar.style.transition = '';
+            robloxChar.style.animation = 'swing 2s ease-in-out infinite';
+        }, 500);
+    }
+    
+    // Reset active target
+    resetActiveTarget();
+}
+
+// Fungsi untuk cek apakah karakter berada di atas target
+function checkTargetOverlap(x, y) {
+    let foundTarget = null;
+    
+    targets.forEach(target => {
+        const targetRect = target.getBoundingClientRect();
+        const charRect = robloxChar.getBoundingClientRect();
+        
+        // Cek tabrakan
+        if (
+            charRect.right > targetRect.left &&
+            charRect.left < targetRect.right &&
+            charRect.bottom > targetRect.top &&
+            charRect.top < targetRect.bottom
+        ) {
+            // Karakter berada di atas target
+            target.classList.add('active');
+            foundTarget = target.id;
+            
+            // Update drop zone ke target
+            dropZone.style.width = targetRect.width + 30 + 'px';
+            dropZone.style.height = targetRect.height + 30 + 'px';
+            dropZone.style.left = targetRect.left - 15 + 'px';
+            dropZone.style.top = targetRect.top - 15 + 'px';
+            dropZone.classList.add('active');
+        } else {
+            target.classList.remove('active');
+        }
+    });
+    
+    activeTarget = foundTarget;
+    
+    // Jika tidak ada target aktif, update drop zone ke posisi karakter
+    if (!foundTarget) {
+        updateDropZone(x, y);
+        dropZone.classList.remove('active');
+    }
+}
+
+// Update drop zone position
+function updateDropZone(x, y) {
+    if (!activeTarget) {
+        dropZone.style.width = '120px';
+        dropZone.style.height = '120px';
+        dropZone.style.left = (x - 20) + 'px';
+        dropZone.style.top = (y - 20) + 'px';
+    }
+}
+
+// Reset active target
+function resetActiveTarget() {
+    targets.forEach(target => {
+        target.classList.remove('active');
+    });
+    activeTarget = null;
+}
+
+// Fungsi ketika karakter dijatuhkan di target
+function dropOnTarget(targetId) {
+    const target = document.getElementById(targetId);
+    
+    // Animate character to target center
+    const targetRect = target.getBoundingClientRect();
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
+    
+    robloxChar.style.transition = 'left 0.3s ease, top 0.3s ease, transform 0.3s ease';
+    robloxChar.style.left = (targetCenterX - robloxChar.offsetWidth / 2) + 'px';
+    robloxChar.style.top = (targetCenterY - robloxChar.offsetHeight / 2) + 'px';
+    robloxChar.style.transform = 'translate(-50%, -50%) scale(0.8)';
+    
+    // Tampilkan efek sukses berdasarkan target
+    setTimeout(() => {
+        showSuccessEffect(targetId);
+    }, 400);
+}
+
+// Tampilkan efek sukses
+function showSuccessEffect(targetId) {
+    let title, message, buttonText, buttonAction;
+    
+    switch(targetId) {
+        case 'target-home':
+            title = "AzConnection";
+            message = "Satu platform untuk semua kebutuhan digital UMKM. Dari jajan sampai jadi besar, AzConnection temani setiap langkah! Mewadahi Pertumbuhan Digital UMKM Indonesia";
+            buttonText = "Kunjungi AzConnection";
+            buttonAction = "openShopPage";
+            break;
+            
+        case 'target-games':
+            title = "Tools Digital Mas Eko!";
+            message = "Tools Edit Untuk memudahkan pekerjaan Project Next. Koleksi lengkap tools digital untuk berbagai kebutuhan kreatif dan produktivitas.";
+            buttonText = "Buka Tools Digital";
+            buttonAction = "openToolsPage";
+            break;
+            
+        case 'target-avatar':
+            title = "Promo Marketing Digital!";
+            message = "Tingkatkan penjualan dengan strategi pemasaran digital terbaik. Dari social media marketing, content strategy, hingga campaign optimization untuk bisnis Anda.";
+            buttonText = "Lihat Strategi Marketing";
+            buttonAction = "showPromoStrategies";
+            break;
+            
+        case 'target-create':
+            title = "Studio Kreator AzConnection!";
+            message = "Platform kreatif untuk membuat konten visual, desain, dan presentasi. Dengan template siap pakai dan tools AI-powered untuk hasil profesional.";
+            buttonText = "Buka Studio Kreator";
+            buttonAction = "openCreatorStudio";
+            break;
+            
+        case 'target-portal':
+            title = "Portal Petualangan Terbuka!";
+            message = "Selamat! Anda telah memasuki Portal Petualangan AzConnection. Bersiaplah untuk menjelajahi berbagai fitur dan tools yang tersedia!";
+            buttonText = "Mulai Jelajahi";
+            buttonAction = "startAdventure";
+            break;
+    }
+    
+    successContent.innerHTML = `
+        <h2 class="success-title">${title}</h2>
+        <p class="success-message">${message}</p>
+        <button class="continue-button" onclick="${buttonAction}()">${buttonText}</button>
+        <button class="continue-button" onclick="closeSuccessEffect()" style="background-color: #ff6b6b; margin-left: 10px;">Tutup</button>
+    `;
+    
+    successEffect.style.display = 'flex';
+}
+
+// Fungsi untuk menutup efek sukses
+function closeSuccessEffect() {
+    successEffect.style.display = 'none';
+    resetCharacterPosition();
+}
+
+// Fungsi untuk reset posisi karakter
+function resetCharacterPosition() {
+    robloxChar.style.transition = 'left 0.5s ease, top 0.5s ease, transform 0.5s ease';
+    robloxChar.style.left = '50%';
+    robloxChar.style.top = '50%';
+    robloxChar.style.transform = 'translate(-50%, -50%)';
+    
+    setTimeout(() => {
+        robloxChar.style.transition = '';
+        robloxChar.style.animation = 'swing 2s ease-in-out infinite';
+    }, 500);
+}
+
+// ==================== FUNGSI NAVIGASI KE HALAMAN ====================
+
+// Fungsi untuk membuka halaman Shop
+function openShopPage() {
+    // Buka dalam tab baru
+    window.open('https://azco.biz.id', '_blank');
+    // Tampilkan notifikasi
+    showNotification("Membuka AzConnection...");
+    closeSuccessEffect();
+}
+
+// Fungsi untuk membuka halaman Tools
+function openToolsPage() {
+    // Buka dalam tab baru
+    window.open('https://eanugroho-code.github.io/tools_masEko/', '_blank');
+    // Tampilkan notifikasi
+    showNotification("Membuka Tools Digital Mas Eko...");
+    closeSuccessEffect();
+}
+
+// Fungsi untuk membuka halaman Promo Marketing
+function showPromoPage() {
+    showSuccessEffect('target-avatar');
+}
+
+// Fungsi untuk membuka halaman Studio
+function showStudioPage() {
+    showSuccessEffect('target-create');
+}
+
+// Fungsi untuk membuka Portal Petualangan
+function startAdventure() {
+    showSuccessEffect('target-portal');
+}
+
+// Fungsi untuk menampilkan strategi marketing
+function showPromoStrategies() {
+    successContent.innerHTML = `
+        <h2 class="success-title">Promo Marketing Digital</h2>
+        <div style="text-align: left; margin: 20px 0;">
+            <h3 style="color: #ffd166; margin-bottom: 10px;">Strategi Marketing Tersedia:</h3>
+            <ul style="color: #ddd; line-height: 1.8;">
+                <li><strong>Social Media Campaign</strong> - Optimasi platform sosial media</li>
+                <li><strong>Content Marketing</strong> - Strategi konten untuk engagement</li>
+                <li><strong>Email Marketing</strong> - Campaign email otomatis</li>
+                <li><strong>Influencer Partnership</strong> - Kolaborasi dengan kreator</li>
+                <li><strong>SEO Optimization</strong> - Tingkatkan ranking pencarian</li>
+                <li><strong>PPC Advertising</strong> - Iklan berbayar terarget</li>
+                <li><strong>Video Marketing</strong> - Konten video untuk engagement</li>
+            </ul>
+        </div>
+        <div style="margin-top: 25px;">
+            <h3 style="color: #ffd166; margin-bottom: 10px;">Pilih Platform:</h3>
+            <button class="continue-button" onclick="window.open('https://azco.biz.id/', '_blank')">Social Media</button>
+            <button class="continue-button" onclick="window.open('https://azco.biz.id/', '_blank')">Email Marketing</button>
+            <button class="continue-button" onclick="window.open('https://azco.biz.id/', '_blank')">SEO Tools</button>
+        </div>
+        <button class="continue-button" onclick="closeSuccessEffect()" style="background-color: #ff6b6b; margin-top: 20px;">Tutup</button>
+    `;
+    successEffect.style.display = 'flex';
+}
+
+// Fungsi untuk membuka studio kreator
+function openCreatorStudio() {
+    successContent.innerHTML = `
+        <h2 class="success-title">Studio Kreator AzConnection</h2>
+        <div style="text-align: left; margin: 20px 0;">
+            <h3 style="color: #ffd166; margin-bottom: 10px;">Fitur Studio Kreator:</h3>
+            <ul style="color: #ddd; line-height: 1.8;">
+                <li><strong>Design Editor</strong> - Buat desain visual profesional</li>
+                <li><strong>Video Maker</strong> - Editor video dengan AI tools</li>
+                <li><strong>Template Gallery</strong> - Ribuan template siap pakai</li>
+                <li><strong>Brand Kit</strong> - Konsistensi brand identity</li>
+                <li><strong>Collaboration</strong> - Bekerja sama dengan tim</li>
+                <li><strong>AI Assistant</strong> - Bantuan AI untuk kreativitas</li>
+                <li><strong>Export Options</strong> - Multiple format export</li>
+            </ul>
+        </div>
+        <div style="margin-top: 25px;">
+            <h3 style="color: #ffd166; margin-bottom: 10px;">Mulai Membuat:</h3>
+            <button class="continue-button" onclick="window.open('https://azco.biz.id/', '_blank')">Design Editor</button>
+            <button class="continue-button" onclick="window.open('https://azco.biz.id/studio/video', '_blank')">Video Editor</button>
+            <button class="continue-button" onclick="window.open('https://azco.biz.id/', '_blank')">Template Gallery</button>
+        </div>
+        <button class="continue-button" onclick="closeSuccessEffect()" style="background-color: #ff6b6b; margin-top: 20px;">Tutup</button>
+    `;
+    successEffect.style.display = 'flex';
+}
+
+// Fungsi untuk menampilkan notifikasi
+function showNotification(message) {
+    // Buat elemen notifikasi
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(45deg, #4287f5, #1ed760);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 10px;
+        z-index: 10000;
+        font-weight: bold;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease;
+    `;
+    
+    // Tambahkan style untuk animasi
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Hapus notifikasi setelah 3 detik
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Tambahkan efek keyboard untuk tombol Enter di intro
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && introScreen.style.display !== 'none') {
+        startTransition();
+    }
+});
+
+// Tambahkan event listener untuk klik langsung pada target options
+document.addEventListener('DOMContentLoaded', function() {
+    // Tunggu hingga semua elemen dimuat
+    setTimeout(() => {
+        // Tambahkan event listener untuk klik pada target options
+        document.querySelectorAll('.target-option').forEach(target => {
+            target.addEventListener('click', function(e) {
+                // Cegah event bubbling jika mengklik tombol di dalamnya
+                if (e.target.classList.contains('target-button')) return;
+                
+                const targetId = this.id;
+                handleTargetClick(targetId);
+            });
+        });
+        
+        // Tambahkan tooltip untuk target options
+        document.querySelectorAll('.target-option').forEach(target => {
+            target.title = "Klik untuk langsung membuka halaman";
+        });
+    }, 1000);
+});
+    </script>
+</body>
+</html>
